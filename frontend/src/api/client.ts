@@ -151,5 +151,7 @@ export const api = {
     medicosACargo: (token: string) => apiFetch<MedicoACargo[]>('/pacientes/me/medicos', { token }),
     historialFrecuencia: (token: string) =>
       apiFetch<Frecuencia[]>('/pacientes/me/frecuencia', { token }),
+    evaluaciones: (token: string) => apiFetch<Evaluacion[]>('/pacientes/me/evaluaciones', { token }),
+    entrenamientos: (token: string) => apiFetch<Entrenamiento[]>('/pacientes/me/entrenamientos', { token }),
   },
 }

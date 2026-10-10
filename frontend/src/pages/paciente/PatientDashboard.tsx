@@ -1,29 +1,28 @@
 
 import { useEffect, useMemo, useState } from 'react'
-import { StatCard } from '../../components/ui/StatCard'
-import { EstadoSesionBadge } from '../../components/ui/Badge'
 import { diasVigentesEn, MonthCalendar } from '../../components/ui/MonthCalendar'
 import { DeviceSessionModal } from '../../components/ui/DeviceSessionModal'
+import { VideoLightbox } from '../../components/ui/VideoLightbox'
+import { VideoCarousel } from '../../components/ui/VideoCarousel'
+import type { VideoTutorial } from '../../components/ui/VideoCarousel'
 import { MedicalTeamPanel } from './MedicalTeamPanel'
-import {
-  entrenamientosDe,
-  evaluacionesDe,
-  resumenProgresoDe,
-  formatearFecha,
-  formatearDuracion,
-  pacientes,
-  pacienteActualId,
-  isoArgentina,
-} from '../../data/mockData'
+import { formatearFecha, isoArgentina } from '../../data/mockData'
 import { useSession } from '../../auth/session'
-import { api } from '../../api/client'
-import type { Frecuencia } from '../../api/types'
+import { ApiError, api } from '../../api/client'
+import type { Entrenamiento, Evaluacion, Frecuencia } from '../../api/types'
 
-type SubVista = 'resumen' | 'calendario' | 'historial'
+type SubVista = 'resumen' | 'calendario'
 
 const DIAS_SEMANA_CORTOS = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM']
 const DIAS_SEMANA = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
 const INTERVALO_ACTUALIZACION_FRECUENCIA_MS = 30_000
+
+const TUTORIALES: VideoTutorial[] = [
+  { id: 'nSOtWvB968U', titulo: 'Cómo usar el dispositivo' },
+  { id: 'nDpKYFcJNK0', titulo: 'Tutorial 2' },
+  { id: 'jNmR3BjkDug', titulo: 'Tutorial 3' },
+  { id: '9sUgVwYjRTE', titulo: 'Tutorial 4' },
+]
 
 function diaDeSemana(fecha: Date): number {
   return (fecha.getDay() + 6) % 7 // 0 = lunes
@@ -32,19 +31,72 @@ function diaDeSemana(fecha: Date): number {
 export function PatientDashboard() {
   const [subVista, setSubVista] = useState<SubVista>('resumen')
   const [sesionAbierta, setSesionAbierta] = useState<'entrenamiento' | 'evaluacion' | null>(null)
+  const [videoAbierto, setVideoAbierto] = useState<{ id: string; titulo: string } | null>(null)
 
   const { perfil, token } = useSession()
-  const paciente = pacientes.find((p) => p.id === pacienteActualId)!
-  const resumen = resumenProgresoDe(pacienteActualId)
-  const sesiones = entrenamientosDe(pacienteActualId)
-  const evaluaciones = evaluacionesDe(pacienteActualId)
 
-  const diasConEntrenamiento = useMemo(() => new Set(sesiones.map((s) => s.fecha)), [sesiones])
-  const diasConEvaluacion = useMemo(() => new Set(evaluaciones.map((s) => s.fecha)), [evaluaciones])
+  const primerNombre = (perfil?.rol === 'paciente' && perfil.datos.nombre) || 'Paciente'
 
-  // El nombre sale de la sesión real; el resto del dashboard todavía es mock.
-  const primerNombre =
-    (perfil?.rol === 'paciente' && perfil.datos.nombre) || paciente.nombre.split(' ')[0]
+  const [entrenamientos, setEntrenamientos] = useState<Entrenamiento[]>([])
+  const [cargandoEntrenamientos, setCargandoEntrenamientos] = useState(true)
+  const [errorEntrenamientos, setErrorEntrenamientos] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!token) return
+    let cancelado = false
+    setCargandoEntrenamientos(true)
+    setErrorEntrenamientos(null)
+    api.paciente
+      .entrenamientos(token)
+      .then((datos) => {
+        if (!cancelado) setEntrenamientos(datos)
+      })
+      .catch((err) => {
+        if (cancelado) return
+        setErrorEntrenamientos(err instanceof ApiError ? err.message : 'No pudimos cargar tus entrenamientos.')
+      })
+      .finally(() => {
+        if (!cancelado) setCargandoEntrenamientos(false)
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [token])
+
+  const [evaluaciones, setEvaluaciones] = useState<Evaluacion[]>([])
+  const [cargandoEvaluaciones, setCargandoEvaluaciones] = useState(true)
+  const [errorEvaluaciones, setErrorEvaluaciones] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!token) return
+    let cancelado = false
+    setCargandoEvaluaciones(true)
+    setErrorEvaluaciones(null)
+    api.paciente
+      .evaluaciones(token)
+      .then((datos) => {
+        if (!cancelado) setEvaluaciones(datos)
+      })
+      .catch((err) => {
+        if (cancelado) return
+        setErrorEvaluaciones(err instanceof ApiError ? err.message : 'No pudimos cargar tus evaluaciones.')
+      })
+      .finally(() => {
+        if (!cancelado) setCargandoEvaluaciones(false)
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [token])
+
+  const diasConEntrenamiento = useMemo(
+    () => new Set(entrenamientos.map((e) => e.fecha_hora.slice(0, 10))),
+    [entrenamientos],
+  )
+  const diasConEvaluacion = useMemo(
+    () => new Set(evaluaciones.map((e) => e.fecha_hora.slice(0, 10))),
+    [evaluaciones],
+  )
 
   const [historialFrecuencia, setHistorialFrecuencia] = useState<Frecuencia[]>([])
   const [frecuenciaCargada, setFrecuenciaCargada] = useState(false)
@@ -118,6 +170,17 @@ export function PatientDashboard() {
     return null
   }, [historialParaCalendario, hoyIso])
 
+  // Racha de días consecutivos con entrenamiento, contando hacia atrás desde hoy.
+  const rachaActualDias = useMemo(() => {
+    let racha = 0
+    const cursor = new Date(hoy)
+    while (diasConEntrenamiento.has(isoArgentina(cursor))) {
+      racha++
+      cursor.setDate(cursor.getDate() - 1)
+    }
+    return racha
+  }, [diasConEntrenamiento, hoyIso])
+
   const semana = useMemo(() => {
     const lunes = new Date(hoy)
     lunes.setHours(12, 0, 0, 0)
@@ -159,9 +222,8 @@ export function PatientDashboard() {
                 <>
                   <h2>Hola {primerNombre}, ¿lista para hoy? 🐣</h2>
                   <p>
-                    Tu ejercicio de hoy es una sesión de entrenamiento inspiratorio de 8 minutos con
-                    resistencia nivel {paciente.resistenciaActual}. Llevás {resumen.rachaActualDias} día
-                    {resumen.rachaActualDias === 1 ? '' : 's'} seguidos, ¡no cortes la racha!
+                    Tu ejercicio de hoy es una sesión de entrenamiento inspiratorio. Llevás {rachaActualDias} día
+                    {rachaActualDias === 1 ? '' : 's'} seguidos, ¡no cortes la racha!
                   </p>
                 </>
               ) : (
@@ -190,41 +252,6 @@ export function PatientDashboard() {
             )}
           </div>
 
-          <div className="grid cols-3">
-            <StatCard
-              icono="⏱️"
-              iconoFondo="var(--teal-pale)"
-              etiqueta="Duración promedio"
-              valor={formatearDuracion(resumen.duracionPromedioSegundos)}
-              sub={
-                resumen.duracionPromedioVariacionPct !== 0
-                  ? `${resumen.duracionPromedioVariacionPct > 0 ? '▲' : '▼'} ${Math.abs(resumen.duracionPromedioVariacionPct)}% vs. semana pasada`
-                  : undefined
-              }
-              subTono={resumen.duracionPromedioVariacionPct >= 0 ? 'up' : 'down'}
-            />
-            <StatCard
-              icono="🎯"
-              iconoFondo="var(--pink-soft)"
-              etiqueta="Eficiencia respiratoria"
-              valor={`${resumen.eficienciaPromedio}%`}
-              sub={
-                resumen.eficienciaVariacionPts !== 0
-                  ? `${resumen.eficienciaVariacionPts > 0 ? '▲' : '▼'} ${Math.abs(resumen.eficienciaVariacionPts)} pts`
-                  : undefined
-              }
-              subTono={resumen.eficienciaVariacionPts >= 0 ? 'up' : 'down'}
-            />
-            <StatCard
-              icono="💪"
-              iconoFondo="var(--yellow-soft)"
-              etiqueta="Resistencia actual"
-              valor={`Nivel ${resumen.resistenciaActual}`}
-              sub="Ajustada por tu equipo médico"
-              subTono="neutral"
-            />
-          </div>
-
           <section className="block">
             <div className="block-title">
               <h3>Esta semana</h3>
@@ -251,28 +278,9 @@ export function PatientDashboard() {
 
           <section className="block">
             <div className="block-title">
-              <h3>Sesiones recientes</h3>
-              <button className="link" onClick={() => setSubVista('historial')}>
-                Ver historial
-              </button>
+              <h3>Tutoriales</h3>
             </div>
-            <div className="card">
-              {sesiones.slice(0, 3).map((s) => (
-                <div className="session-row" key={s.id}>
-                  <div className="session-date">{formatearFecha(s.fecha)}</div>
-                  <div className="session-bar-wrap">
-                    <div
-                      className="session-bar"
-                      style={{ width: `${Math.round((s.duracionSegundos / s.duracionObjetivoSegundos) * 100)}%` }}
-                    />
-                  </div>
-                  <div className="session-meta">
-                    {formatearDuracion(s.duracionSegundos)} · Nivel {s.resistencia} <EstadoSesionBadge estado={s.estado} />
-                  </div>
-                </div>
-              ))}
-              {sesiones.length === 0 && <p className="empty-state">Todavía no hiciste sesiones de entrenamiento.</p>}
-            </div>
+            <VideoCarousel videos={TUTORIALES} onSeleccionar={(video) => setVideoAbierto(video)} />
           </section>
 
           <section className="block">
@@ -281,9 +289,13 @@ export function PatientDashboard() {
             </div>
             <div className="card">
               <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', marginBottom: 14 }}>
-                Tu última evaluación fue el {evaluaciones[0] ? formatearFecha(evaluaciones[0].fecha) : '—'}. La
-                evaluación mide qué tan fuerte y eficiente es tu respiración para ajustar la
-                resistencia del dispositivo.
+                {cargandoEvaluaciones
+                  ? 'Cargando tu última evaluación…'
+                  : errorEvaluaciones
+                    ? errorEvaluaciones
+                    : `Tu última evaluación fue el ${evaluaciones[0] ? formatearFecha(evaluaciones[0].fecha_hora) : '—'}.`}{' '}
+                La evaluación mide qué tan fuerte y eficiente es tu respiración para ajustar la resistencia del
+                dispositivo.
               </p>
               <button className="btn btn-outline btn-sm" onClick={() => setSesionAbierta('evaluacion')}>
                 Iniciar evaluación
@@ -315,35 +327,15 @@ export function PatientDashboard() {
         </div>
       )}
 
-      {subVista === 'historial' && (
-        <div className="card">
-          <div className="block-title">
-            <h3>Historial de sesiones</h3>
-            <button className="link" onClick={() => setSubVista('resumen')}>
-              ← Volver al resumen
-            </button>
-          </div>
-          {sesiones.map((s) => (
-            <div className="session-row" key={s.id}>
-              <div className="session-date">{formatearFecha(s.fecha)}</div>
-              <div className="session-bar-wrap">
-                <div
-                  className="session-bar"
-                  style={{ width: `${Math.round((s.duracionSegundos / s.duracionObjetivoSegundos) * 100)}%` }}
-                />
-              </div>
-              <div className="session-meta">
-                {formatearDuracion(s.duracionSegundos)} · Nivel {s.resistencia} · Eficiencia {s.eficiencia}%{' '}
-                <EstadoSesionBadge estado={s.estado} />
-              </div>
-            </div>
-          ))}
-          {sesiones.length === 0 && <p className="empty-state">Todavía no hiciste sesiones de entrenamiento.</p>}
-        </div>
-      )}
-
       {sesionAbierta && (
         <DeviceSessionModal tipo={sesionAbierta} onClose={() => setSesionAbierta(null)} />
+      )}
+      {videoAbierto && (
+        <VideoLightbox
+          videoId={videoAbierto.id}
+          titulo={videoAbierto.titulo}
+          onClose={() => setVideoAbierto(null)}
+        />
       )}
       </div>
     </div>

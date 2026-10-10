@@ -221,10 +221,6 @@ function ConfiguracionPaciente({ datos, token }: { datos: PacientePerfil; token:
       setError('El nombre y el apellido no pueden contener números.')
       return
     }
-    if (!/^\d{7,8}$/.test(dni)) {
-      setError('El DNI debe tener entre 7 y 8 dígitos.')
-      return
-    }
     if (enfermedades.length === 0) {
       setError('Elegí al menos una enfermedad preexistente.')
       return
@@ -241,7 +237,6 @@ function ConfiguracionPaciente({ datos, token }: { datos: PacientePerfil; token:
     }
 
     const body: PacientePerfilUpdateBody = {
-      dni: dni.trim(),
       nombre: nombre.trim(),
       apellido: apellido.trim(),
       email: email.trim(),
@@ -286,7 +281,8 @@ function ConfiguracionPaciente({ datos, token }: { datos: PacientePerfil; token:
         <div className="auth-row">
           <div className="field">
             <label htmlFor="config-dni">DNI</label>
-            <input id="config-dni" inputMode="numeric" value={dni} onChange={(event) => setDni(event.target.value)} required />
+            <input id="config-dni" inputMode="numeric" value={dni} onChange={(event) => setDni(event.target.value)} disabled required />
+            <p className="field-hint">El DNI no se puede modificar.</p>
           </div>
           <div className="field">
             <label htmlFor="config-email">Mail</label>

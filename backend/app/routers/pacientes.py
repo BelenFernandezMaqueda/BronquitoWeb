@@ -6,9 +6,13 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.deps import get_current_paciente
 from app.core.security import hashear_secreto
+from app.models.entrenamiento import Entrenamiento
+from app.models.evaluacion import Evaluacion
 from app.models.medico import Medico
 from app.models.medico_paciente import MedicoPaciente
 from app.models.paciente import Paciente
+from app.schemas.entrenamiento import EntrenamientoOut
+from app.schemas.evaluacion import EvaluacionOut
 from app.schemas.medico import MedicoACargoOut
 from app.schemas.paciente import PacientePerfilOut, PacientePerfilUpdate
 
@@ -84,6 +88,34 @@ def mi_historial_frecuencia(
         db.query(FrecuenciaRecomendada)
         .filter(FrecuenciaRecomendada.id_paciente == paciente.id_paciente)
         .order_by(FrecuenciaRecomendada.vigente_desde.desc(), FrecuenciaRecomendada.creado_en.desc())
+        .all()
+    )
+
+
+@router.get("/me/evaluaciones", response_model=list[EvaluacionOut])
+def mis_evaluaciones(
+    paciente: Paciente = Depends(get_current_paciente),
+    db: Session = Depends(get_db),
+):
+    """Evaluaciones (espirometría/PIM) del propio paciente logueado, más recientes primero."""
+    return (
+        db.query(Evaluacion)
+        .filter(Evaluacion.id_paciente == paciente.id_paciente)
+        .order_by(Evaluacion.fecha_hora.desc())
+        .all()
+    )
+
+
+@router.get("/me/entrenamientos", response_model=list[EntrenamientoOut])
+def mis_entrenamientos(
+    paciente: Paciente = Depends(get_current_paciente),
+    db: Session = Depends(get_db),
+):
+    """Entrenamientos del propio paciente logueado, más recientes primero."""
+    return (
+        db.query(Entrenamiento)
+        .filter(Entrenamiento.id_paciente == paciente.id_paciente)
+        .order_by(Entrenamiento.fecha_hora.desc())
         .all()
     )
 
