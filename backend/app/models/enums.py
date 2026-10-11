@@ -19,18 +19,3 @@ class OrigenRutina(str, enum.Enum):
 
     algoritmo = "ALGORITMO"
     medico = "MEDICO"
-
-
-class OrigenPaciente(str, enum.Enum):
-    """
-    TABLA USUARIOS.ORIGEN — cómo se creó la cuenta del paciente.
-
-    - `dispositivo`: la creó la OLED (aparece con DNI + PIN nuevos) y todavía
-      puede que le falte el mail; se lo pedimos la primera vez que entra a la
-      web. A futuro, estas cuentas llegan por la sincronización de la micro SD.
-    - `web`: la creó el propio paciente desde la web, con el formulario
-      completo (mail incluido desde el arranque).
-    """
-
-    dispositivo = "DISPOSITIVO"
-    web = "WEB"

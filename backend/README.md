@@ -42,9 +42,8 @@ app/
                         resetearlo.
     medicos.py             Perfil del médico logueado, sus pacientes vinculados,
                         vincular un paciente existente por DNI.
-    pacientes.py            Perfil del paciente logueado y `PATCH /pacientes/me`
-                        para completar/editar su mail y datos (pantalla
-                        "completá tu perfil" de las cuentas que vienen sin mail).
+    pacientes.py            Perfil y edición de datos del paciente logueado
+                        mediante `PATCH /pacientes/me`.
 ```
 
 ## Las 9 tablas (y qué clase de Python es cada una)
@@ -77,7 +76,7 @@ Con el stack levantado (`docker compose up`), hay tres formas:
 # Todos los pacientes y todos los médicos
 docker compose exec db mysql --default-character-set=utf8mb4 \
   -ubronquito -pchangeme_bronquito bronquito -e \
-  "SELECT id_paciente,nombre,apellido,dni,email,origen FROM usuarios;
+  "SELECT id_paciente,nombre,apellido,dni,email FROM usuarios;
    SELECT id_medico,nombre,apellido,usuario FROM medicos;"
 ```
 
@@ -116,7 +115,7 @@ MySQL está expuesto en `localhost:3306` mientras Docker corre. Datos de conexi�
 ## ⚠️ Si ya habías levantado el proyecto antes de este cambio
 
 Las tablas `usuarios` y `medicos` sumaron columnas (`usuarios`: `nombre`, `apellido`,
-`email`, `enfermedades`, `origen`, `acepto_terminos`, `fecha_aceptacion_terminos`, `reset_token`,
+`email`, `enfermedades`, `acepto_terminos`, `fecha_aceptacion_terminos`, `reset_token`,
 `reset_token_expira`; `medicos`: `nombre`, `apellido`, y los mismos de reset/términos).
 Como `create_all()` sólo crea tablas que no existen — no actualiza las que ya existen —
 necesitás borrar la base vieja una vez antes de levantar de nuevo:

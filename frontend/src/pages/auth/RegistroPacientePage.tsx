@@ -102,7 +102,7 @@ export function RegistroPacientePage() {
   return (
     <AuthShell
       titulo="Crear cuenta de paciente"
-      subtitulo="Si tu dispositivo ya te generó un DNI y PIN, no hace falta que te registres: entrá directo desde el login."
+      subtitulo="Creá tu cuenta para acceder a tu información y compartirla con tu equipo médico."
       wide
     >
       {error && <div className="auth-alert error">{error}</div>}

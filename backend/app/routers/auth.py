@@ -2,10 +2,7 @@
 Todo el login/registro vive acá. Dos flujos parecidos pero separados:
 
 - MÉDICOS: se registran con mail + contraseña.
-- PACIENTES: se registran con DNI + PIN + mail + perfil clínico (`origen =
-  "web"`), O ya llegan creados desde el dispositivo (`origen = "dispositivo"`,
-  con DNI + PIN y quizás sin mail — lo completan después con
-  `PATCH /pacientes/me`).
+- PACIENTES: se registran desde la web con DNI + PIN + mail + perfil clínico.
 
 El vínculo médico↔paciente NO se crea acá: arranca desde la cuenta del
 médico (`POST /medicos/me/vincular`).
@@ -28,7 +25,6 @@ from app.core.database import get_db
 from app.core.email import enviar_email
 from app.core.email_templates import DUCK_CID, DUCK_PNG, recuperar_credencial
 from app.core.security import crear_token, hashear_secreto, verificar_secreto
-from app.models.enums import OrigenPaciente
 from app.models.medico import Medico
 from app.models.paciente import Paciente
 from app.schemas.auth import (
@@ -176,9 +172,7 @@ def resetear_contrasena(payload: ResetearContrasenaRequest, db: Session = Depend
 @router.post("/pacientes/registro", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
 def registrar_paciente(payload: PacienteRegistro, db: Session = Depends(get_db)):
     """
-    Alta de paciente DESDE LA WEB. Los pacientes que nacen del dispositivo NO
-    pasan por acá: llegan ya creados y completan lo que falte con
-    `PATCH /pacientes/me`.
+    Alta de paciente desde la web con sus datos y consentimiento completos.
     """
     if db.query(Paciente).filter(Paciente.dni == payload.dni).first():
         raise HTTPException(status_code=400, detail="Ya existe una cuenta con ese DNI.")
@@ -198,7 +192,6 @@ def registrar_paciente(payload: PacienteRegistro, db: Session = Depends(get_db))
         fumador=payload.fumador,
         enfermedades=", ".join(payload.enfermedades),
         fecha_registro=date.today(),
-        origen=OrigenPaciente.web,
         acepto_terminos=True,
         fecha_aceptacion_terminos=datetime.now(timezone.utc),
     )
@@ -213,8 +206,8 @@ def registrar_paciente(payload: PacienteRegistro, db: Session = Depends(get_db))
 @router.post("/pacientes/login", response_model=TokenOut)
 def login_paciente(payload: PacienteLogin, db: Session = Depends(get_db)):
     """
-    Login estándar con DNI + PIN contra una cuenta que ya existe (creada por
-    la web o por el dispositivo). Sin bloqueo por intentos fallidos — decisión
+    Login estándar con DNI + PIN contra una cuenta registrada en la web.
+    Sin bloqueo por intentos fallidos — decisión
     explícita para esta primera versión.
     """
     paciente = db.query(Paciente).filter(Paciente.dni == payload.dni).first()

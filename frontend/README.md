@@ -90,7 +90,7 @@ src/
                            iniciar evaluación/entrenamiento "en consultorio".
       FrequencyModal.tsx    Modal para modificar manualmente la frecuencia recomendada.
   App.tsx                    Rutas (react-router-dom) + guards: SoloAnonimos / SoloAutenticados,
-                           redirección a "completá tu perfil", y el dashboard según rol.
+                           y el dashboard según rol.
   main.tsx                   Punto de entrada: <BrowserRouter> + <SessionProvider> + <App>.
 ```
 

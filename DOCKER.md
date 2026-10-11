@@ -61,8 +61,9 @@ Cuando esté todo arriba vas a poder abrir:
   terminal.
 - `docker compose down -v` además borra el volumen de MySQL (o sea, borra todos los datos
   guardados en la base). Usalo sólo si querés arrancar de cero.
-- Editá el código normalmente con VS Code mientras los contenedores están corriendo:
-  tanto el frontend (Vite) como el backend (uvicorn `--reload`) recargan solos al guardar.
+- Después de editar código, corré `docker compose up --build` para reconstruir las imágenes.
+  La configuración evita montar las carpetas locales en los contenedores, así también
+  funciona en equipos donde Docker Desktop no puede compartir el proyecto.
 
 ## 5. Ver qué hay en la base de datos
 

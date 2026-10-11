@@ -4,22 +4,15 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { Header } from './components/layout/Header'
 import { DuckLogo } from './components/ui/DuckLogo'
 import { useSession } from './auth/session'
-import type { Perfil } from './auth/session'
 import { LoginPage } from './pages/auth/LoginPage'
 import { RegistroMedicoPage } from './pages/auth/RegistroMedicoPage'
 import { RegistroPacientePage } from './pages/auth/RegistroPacientePage'
 import { RecuperarPage } from './pages/auth/RecuperarPage'
 import { ResetearPage } from './pages/auth/ResetearPage'
-import { CompletarPerfilPage } from './pages/paciente/CompletarPerfilPage'
 import { PatientDashboard } from './pages/paciente/PatientDashboard'
 import { DoctorView } from './pages/medico/DoctorView'
 import { EvaluationSignalPage } from './pages/medico/EvaluationSignalPage'
 import { ConfiguracionPage } from './pages/configuracion/ConfiguracionPage'
-
-/** ¿El paciente logueado todavía tiene que completar su perfil? */
-function pacienteIncompleto(perfil: Perfil | null): boolean {
-  return perfil?.rol === 'paciente' && !perfil.datos.perfil_completo
-}
 
 /** Rutas públicas: si ya hay sesión, redirige al dashboard. */
 function SoloAnonimos({ children }: { children: ReactNode }) {
@@ -28,11 +21,10 @@ function SoloAnonimos({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
-/** Rutas privadas: exige sesión y perfil completo. */
+/** Rutas privadas: exige sesión. */
 function SoloAutenticados({ children }: { children: ReactNode }) {
-  const { estado, perfil } = useSession()
+  const { estado } = useSession()
   if (estado !== 'autenticado') return <Navigate to="/login" replace />
-  if (pacienteIncompleto(perfil)) return <Navigate to="/completar-perfil" replace />
   return <>{children}</>
 }
 
@@ -105,19 +97,6 @@ export default function App() {
       {/* Los links de reseteo llegan por mail: accesibles siempre. */}
       <Route path="/resetear/contrasena" element={<ResetearPage modo="contrasena" />} />
       <Route path="/resetear/pin" element={<ResetearPage modo="pin" />} />
-
-      <Route
-        path="/completar-perfil"
-        element={
-          estado === 'autenticado' && pacienteIncompleto(perfil) ? (
-            <CompletarPerfilPage />
-          ) : estado === 'autenticado' ? (
-            <Navigate to="/" replace />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
 
       <Route
         path="/"

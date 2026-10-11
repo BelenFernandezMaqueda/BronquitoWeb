@@ -35,10 +35,7 @@ def actualizar_mi_perfil(
     db: Session = Depends(get_db),
 ):
     """
-    El paciente completa/edita su perfil una vez logueado. El caso central es
-    la cuenta creada por el dispositivo que llega sin mail: la web la manda
-    acá con `email` + `acepto_terminos=true` antes de dejarla entrar al
-    dashboard (ver `perfil_completo` en el schema).
+    El paciente puede editar sus datos desde su configuración.
     """
     datos = payload.model_dump(exclude_unset=True, exclude_none=True)
 
