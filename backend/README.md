@@ -4,10 +4,10 @@ Backend de la plataforma Bronquito. Modela las 9 tablas del documento de arquite
 (pacientes, médicos, vínculo médico-paciente, evaluaciones, entrenamientos, rutina activa,
 notas médicas) y expone login real:
 
-- **Médicos**: se registran con mail + contraseña.
-- **Pacientes**: se registran desde la web con el formulario completo e inician sesión con
-  DNI + PIN. El vínculo con un médico se crea después, desde la cuenta del médico — nunca
-  al registrarse.
+- **Médicos**: se registran con mail + contraseña (y nombre y apellido) o inician sesión.
+- **Pacientes**: se registran con varios datos: usuario,  PIN de 4 dígitos, altura, peso, condiciones preexistentes, etc o puede iniciar sesión.  
+- El vínculo con un médico se crea siempre después, desde la cuenta del
+  médico — nunca al registrarse.
 
 Recuperar la credencial ("olvidé mi contraseña" del médico / "olvidé mi PIN" del paciente)
 usa el mismo mecanismo de token para los dos roles.
@@ -134,11 +134,9 @@ había datos de prueba, no se pierde nada real.
 
 **Pacientes (DNI / PIN):**
 
-- `45819569` / `1234` — Malena Salerno
-- `38123456` / `5678` — Tomás Herrera
-- `29987654` / `4321` — Rocío Fernández
-
-Los tres tienen mail, datos clínicos y términos aceptados, como en un alta web.
+- `45819569` / `1234` — Malena Salerno, perfil completo (con nombre y mail)
+- `38123456` / `5678` — Tomás Herrera, perfil completo (con nombre y mail)
+- `29987654` / `4321` — Rocío Fernández, perfil completo (con nombre y mail)
 
 ## Probar el login desde /docs
 
@@ -197,12 +195,8 @@ enviar_email(destinatario='test@x.com', asunto='Prueba', html='<p>Hola</p>')"
 
 - **No hay bloqueo de cuenta por intentos fallidos** (ni de PIN ni de contraseña) — lo
   charlamos y se decidió no incluirlo en esta primera versión.
-- **Los pacientes se registran desde la web, nunca vía un médico.** El formulario pide
-  nombre, apellido, mail, datos clínicos y aceptación de términos. El médico sólo puede
-  **vincularse** a un paciente que ya existe.
-- **El perfil se completa durante el registro.** Nombre, apellido y mail se piden en el
-  alta web; el paciente puede editarlos luego desde su configuración. El médico también
-  carga nombre y apellido al registrarse.
+- **Los pacientes se registran directamente desde la página web, nunca vía un médico.**
+  El propio paciente se registra desde la web. El médico sólo puede vincularse a un paciente que ya existe ingresando el usuario y el PIN del paciente. 
 - **"Olvidé mi contraseña / PIN" manda el link por mail** (branded, ver sección "Mails")
   en un `BackgroundTask`. La respuesta HTTP es siempre el mismo mensaje genérico ("si la
   cuenta existe...") y nunca incluye el token — no se puede usar este endpoint para
