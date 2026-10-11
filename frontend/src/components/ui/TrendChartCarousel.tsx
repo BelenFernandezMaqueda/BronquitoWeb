@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { AnotacionesGrafico } from './ChartInteractivo'
 import { PimTrendChart } from './PimTrendChart'
 
 export interface SerieTendencia {
@@ -10,16 +11,26 @@ export interface SerieTendencia {
   color: string
   valores: number[]
   fechas: string[]
+  /** Clave del gráfico, para guardar sus notas (ver anotaciones/useAnotaciones.ts). */
+  clave?: string
+  /** Clave estable de cada punto (ej. el id de la evaluación), mismo orden que `valores`. */
+  clavesPuntos?: string[]
+  /** Fecha y hora completas de cada punto, para el CSV y el detalle del punto. */
+  fechasCompletas?: string[]
+  /** Nombre (sin extensión) del CSV exportable. */
+  nombreCsv?: string
 }
 
 interface TrendChartCarouselProps {
   series: SerieTendencia[]
+  /** Si está, se pueden marcar puntos con notas. */
+  anotacionesDe?: (serie: SerieTendencia) => AnotacionesGrafico | undefined
 }
 
 const POR_PAGINA = 2
 
 /** Gráficos de evolución en el tiempo, de a dos, navegables con flechas — sin cortar ningún gráfico a la mitad. */
-export function TrendChartCarousel({ series }: TrendChartCarouselProps) {
+export function TrendChartCarousel({ series, anotacionesDe }: TrendChartCarouselProps) {
   const [pagina, setPagina] = useState(0)
   const totalPaginas = Math.max(1, Math.ceil(series.length / POR_PAGINA))
   const paginaActual = Math.min(pagina, totalPaginas - 1)
@@ -45,6 +56,10 @@ export function TrendChartCarousel({ series }: TrendChartCarouselProps) {
                 key={serie.nombreCorto}
                 valores={serie.valores}
                 fechas={serie.fechas}
+                fechasCompletas={serie.fechasCompletas}
+                claves={serie.clavesPuntos}
+                anotaciones={anotacionesDe?.(serie)}
+                nombreCsv={serie.nombreCsv}
                 etiquetaEje={serie.etiquetaEje}
                 titulo={serie.titulo}
                 unidad={serie.unidad}

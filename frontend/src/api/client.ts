@@ -4,6 +4,8 @@
  */
 
 import type {
+  Anotacion,
+  AnotacionCrearBody,
   Entrenamiento,
   Evaluacion,
   EvaluacionMuestras,
@@ -132,6 +134,18 @@ export const api = {
       apiFetch<Frecuencia[]>(`/medicos/me/pacientes/${idPaciente}/frecuencia`, { token }),
     crearFrecuencia: (token: string, idPaciente: number, body: FrecuenciaCrearBody) =>
       apiFetch<Frecuencia>(`/medicos/me/pacientes/${idPaciente}/frecuencia`, { method: 'POST', body, token }),
+    anotacionesDe: (token: string, idPaciente: number) =>
+      apiFetch<Anotacion[]>(`/medicos/me/pacientes/${idPaciente}/anotaciones`, { token }),
+    crearAnotacion: (token: string, idPaciente: number, body: AnotacionCrearBody) =>
+      apiFetch<Anotacion>(`/medicos/me/pacientes/${idPaciente}/anotaciones`, { method: 'POST', body, token }),
+    editarAnotacion: (token: string, idPaciente: number, idAnotacion: number, texto: string) =>
+      apiFetch<Anotacion>(`/medicos/me/pacientes/${idPaciente}/anotaciones/${idAnotacion}`, {
+        method: 'PATCH',
+        body: { texto },
+        token,
+      }),
+    borrarAnotacion: (token: string, idPaciente: number, idAnotacion: number) =>
+      apiFetch<void>(`/medicos/me/pacientes/${idPaciente}/anotaciones/${idAnotacion}`, { method: 'DELETE', token }),
   },
 
   paciente: {

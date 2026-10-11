@@ -7,6 +7,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_medico
 from app.core.security import hashear_secreto, verificar_secreto
 from app.core.timezone import hoy_argentina
+from app.models.anotacion import Anotacion
 from app.models.entrenamiento import Entrenamiento
 from app.models.evaluacion import Evaluacion, EvaluacionMuestra
 from app.models.frecuencia_recomendada import FrecuenciaRecomendada
@@ -14,6 +15,7 @@ from app.models.medico import Medico
 from app.models.medico_paciente import MedicoPaciente
 from app.models.paciente import Paciente
 from app.models.rutina import Rutina
+from app.schemas.anotacion import AnotacionCrearRequest, AnotacionEditarRequest, AnotacionOut
 from app.schemas.entrenamiento import EntrenamientoOut
 from app.schemas.evaluacion import EvaluacionMuestraOut, EvaluacionOut
 from app.schemas.frecuencia import FrecuenciaCrearRequest, FrecuenciaOut
@@ -265,3 +267,91 @@ def crear_frecuencia(
     db.refresh(frecuencia)
 
     return frecuencia
+
+
+@router.get("/me/pacientes/{id_paciente}/anotaciones", response_model=list[AnotacionOut])
+def anotaciones_de_paciente(
+    id_paciente: int,
+    medico: Medico = Depends(get_current_medico),
+    db: Session = Depends(get_db),
+):
+    """
+    Todas las notas sobre este paciente (en puntos de gráficos y comentarios
+    generales de sesión), de todos sus médicos vinculados, más viejas primero.
+    El front las reparte entre los gráficos según `grafico`/`sesion`.
+    """
+    _exigir_vinculo(medico, id_paciente, db)
+    return (
+        db.query(Anotacion)
+        .filter(Anotacion.id_paciente == id_paciente)
+        .order_by(Anotacion.creado_en, Anotacion.id_anotacion)
+        .all()
+    )
+
+
+@router.post("/me/pacientes/{id_paciente}/anotaciones", response_model=AnotacionOut, status_code=201)
+def crear_anotacion(
+    id_paciente: int,
+    payload: AnotacionCrearRequest,
+    medico: Medico = Depends(get_current_medico),
+    db: Session = Depends(get_db),
+):
+    _exigir_vinculo(medico, id_paciente, db)
+
+    anotacion = Anotacion(
+        id_paciente=id_paciente,
+        id_medico=medico.id_medico,
+        sesion=payload.sesion,
+        grafico=payload.grafico,
+        punto=payload.punto,
+        texto=payload.texto,
+        creado_en=datetime.now(timezone.utc),
+    )
+    db.add(anotacion)
+    db.commit()
+    db.refresh(anotacion)
+
+    return anotacion
+
+
+def _anotacion_propia(medico: Medico, id_paciente: int, id_anotacion: int, db: Session) -> Anotacion:
+    """La nota pedida, cortando con 403 si la escribió otro médico (sólo el autor la modifica)."""
+    _exigir_vinculo(medico, id_paciente, db)
+    anotacion = (
+        db.query(Anotacion)
+        .filter(Anotacion.id_anotacion == id_anotacion, Anotacion.id_paciente == id_paciente)
+        .first()
+    )
+    if anotacion is None:
+        raise HTTPException(status_code=404, detail="No existe esa nota.")
+    if anotacion.id_medico != medico.id_medico:
+        raise HTTPException(status_code=403, detail="Sólo quien escribió la nota la puede modificar.")
+    return anotacion
+
+
+@router.patch("/me/pacientes/{id_paciente}/anotaciones/{id_anotacion}", response_model=AnotacionOut)
+def editar_anotacion(
+    id_paciente: int,
+    id_anotacion: int,
+    payload: AnotacionEditarRequest,
+    medico: Medico = Depends(get_current_medico),
+    db: Session = Depends(get_db),
+):
+    anotacion = _anotacion_propia(medico, id_paciente, id_anotacion, db)
+    anotacion.texto = payload.texto
+    anotacion.editado_en = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(anotacion)
+    return anotacion
+
+
+@router.delete("/me/pacientes/{id_paciente}/anotaciones/{id_anotacion}", status_code=204)
+def borrar_anotacion(
+    id_paciente: int,
+    id_anotacion: int,
+    medico: Medico = Depends(get_current_medico),
+    db: Session = Depends(get_db),
+):
+    anotacion = _anotacion_propia(medico, id_paciente, id_anotacion, db)
+    db.delete(anotacion)
+    db.commit()

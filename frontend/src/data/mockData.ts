@@ -31,6 +31,17 @@ export function isoArgentina(fecha: Date): string {
   return FORMATO_ISO_ARGENTINA.format(fecha)
 }
 
+export function edadDesdeNacimiento(fechaIso: string): number {
+  const nacimiento = new Date(fechaIso)
+  const hoy = new Date()
+  let edad = hoy.getFullYear() - nacimiento.getFullYear()
+  const noCumplioAun =
+    hoy.getMonth() < nacimiento.getMonth() ||
+    (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() < nacimiento.getDate())
+  if (noCumplioAun) edad -= 1
+  return edad
+}
+
 export function diasDesde(fecha: string): number {
   const ms = HOY.getTime() - new Date(fecha).getTime()
   return Math.max(0, Math.round(ms / (1000 * 60 * 60 * 24)))

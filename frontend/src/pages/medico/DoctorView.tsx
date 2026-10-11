@@ -6,17 +6,7 @@ import { useSession } from '../../auth/session'
 import { ApiError, api } from '../../api/client'
 import type { PacientePerfil } from '../../api/types'
 import type { Paciente } from '../../types'
-
-function edadDesdeNacimiento(fechaIso: string): number {
-  const nacimiento = new Date(fechaIso)
-  const hoy = new Date()
-  let edad = hoy.getFullYear() - nacimiento.getFullYear()
-  const noCumplioAun =
-    hoy.getMonth() < nacimiento.getMonth() ||
-    (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() < nacimiento.getDate())
-  if (noCumplioAun) edad -= 1
-  return edad
-}
+import { edadDesdeNacimiento } from '../../data/mockData'
 
 function inicialesDe(nombre: string | null, apellido: string | null, nombreUsuario: string): string {
   const letras = `${nombre?.[0] ?? ''}${apellido?.[0] ?? ''}`

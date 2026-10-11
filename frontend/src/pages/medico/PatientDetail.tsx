@@ -4,13 +4,15 @@ import type { Paciente } from '../../types'
 import type { Entrenamiento, Evaluacion, Frecuencia, Rutina } from '../../api/types'
 import { ApiError, api } from '../../api/client'
 import { useSession } from '../../auth/session'
-import type { SerieTendencia } from '../../components/ui/TrendChartCarousel'
+import { useAnotaciones } from '../../anotaciones/useAnotaciones'
 import { TrendChartCarousel } from '../../components/ui/TrendChartCarousel'
 import { MonthCalendar } from '../../components/ui/MonthCalendar'
 import { Modal } from '../../components/ui/Modal'
 import { TrashIcon } from '../../components/ui/TrashIcon'
 import { FrequencyModal } from './FrequencyModal'
 import { formatearFecha, isoArgentina } from '../../data/mockData'
+import { TIPO_PDF, elegirDestino } from '../../exportar/archivos'
+import { agruparEnSesiones, seriesDeEntrenamientos, seriesDeEvaluaciones } from './evolucion'
 
 type Tab = 'evaluaciones' | 'entrenamiento' | 'calendario'
 
@@ -20,7 +22,7 @@ interface PatientDetailProps {
 }
 
 export function PatientDetail({ paciente, onDesvincular }: PatientDetailProps) {
-  const { token } = useSession()
+  const { token, perfil } = useSession()
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('evaluaciones')
   const [historialFrecuencia, setHistorialFrecuencia] = useState<Frecuencia[]>([])
@@ -126,19 +128,8 @@ export function PatientDetail({ paciente, onDesvincular }: PatientDetailProps) {
     }
   }, [token, paciente.id])
 
-  // Dos evaluaciones son la misma sesión de consultorio si comparten el
-  // `fecha_hora` exacto (se captura una sola vez al arrancar la sesión) —
-  // se agrupan en una sola fila de la tabla.
-  const sesiones = useMemo(() => {
-    const porFecha = new Map<string, { fecha_hora: string; espirometria?: Evaluacion; pim?: Evaluacion }>()
-    for (const e of evaluaciones) {
-      const sesion = porFecha.get(e.fecha_hora) ?? { fecha_hora: e.fecha_hora }
-      if (e.tipo === 'ESPIROMETRIA') sesion.espirometria = e
-      else sesion.pim = e
-      porFecha.set(e.fecha_hora, sesion)
-    }
-    return [...porFecha.values()]
-  }, [evaluaciones])
+  // La espirometría y el PIM de una misma sesión de consultorio van en una sola fila de la tabla.
+  const sesiones = useMemo(() => agruparEnSesiones(evaluaciones), [evaluaciones])
 
   const ultimaEvaluacion = evaluaciones[0]
   const ultimoEntrenamiento = entrenamientos[0]
@@ -177,53 +168,39 @@ export function PatientDetail({ paciente, onDesvincular }: PatientDetailProps) {
     return mapa
   }, [evaluaciones])
 
-  const PALETA_SERIES = ['#F0459A', '#2FA7A0', '#7C5CF0', '#E0A030', '#3B82F6', '#D1234F', '#1F9D64', '#B9820C']
-
-  /** Arma la lista de SerieTendencia para un carrusel a partir de la config de cada variable. */
-  function construirSeries<T>(
-    datos: T[],
-    fechaDe: (item: T) => string,
-    variables: [nombreCorto: string, etiqueta: string, etiquetaEje: string, unidad: string, valorDe: (item: T) => number | null | undefined][],
-  ): SerieTendencia[] {
-    return variables.map(([nombreCorto, etiqueta, etiquetaEje, unidad, valorDe], i) => {
-      const puntos = datos
-        .map((item) => ({ valor: valorDe(item), fecha: fechaDe(item) }))
-        .filter((p): p is { valor: number; fecha: string } => p.valor != null)
-      return {
-        nombreCorto,
-        titulo: `Evolución de ${etiqueta}`,
-        etiquetaEje,
-        unidad,
-        color: PALETA_SERIES[i % PALETA_SERIES.length],
-        valores: puntos.map((p) => p.valor),
-        fechas: puntos.map((p) => p.fecha),
-      }
-    })
-  }
-
   const evaluacionesCronologicas = [...evaluaciones].reverse()
-  const seriesEvaluaciones = construirSeries(evaluacionesCronologicas, (e) => formatearFecha(e.fecha_hora), [
-    ['PIM', 'PIM', 'PIM (cmH₂O)', 'cmH₂O', (e) => e.pim],
-    ['FVC', 'FVC', 'FVC (L)', 'L', (e) => e.fvc],
-    ['FEV1', 'FEV1', 'FEV1 (L)', 'L', (e) => e.fev1],
-    ['PEF', 'PEF', 'PEF (L/min)', 'L/min', (e) => e.pef],
-    ['FIVC', 'FIVC', 'FIVC (L)', 'L', (e) => e.fivc],
-    ['FIV1', 'FIV1', 'FIV1 (L)', 'L', (e) => e.fiv1],
-  ])
+  const seriesEvaluaciones = seriesDeEvaluaciones(evaluacionesCronologicas, paciente.nombre)
+  const seriesEntrenamiento = seriesDeEntrenamientos([...entrenamientos].reverse(), paciente.nombre)
 
-  const entrenamientosCronologicos = [...entrenamientos].reverse()
-  const seriesEntrenamiento = construirSeries(entrenamientosCronologicos, (e) => formatearFecha(e.fecha_hora), [
-    ['Resistencia', 'resistencia programada', 'Resistencia', '', (e) => e.resistencia_programada],
-    ['Repeticiones', 'repeticiones programadas', 'Repeticiones', '', (e) => e.repeticiones_programadas],
-    ['Presión máx.', 'presión máxima', 'Presión máx. (cmH₂O)', 'cmH₂O', (e) => e.presion_max],
-    ['Presión prom.', 'presión promedio', 'Presión prom. (cmH₂O)', 'cmH₂O', (e) => e.presion_promedio],
-    ['Índice de fatiga', 'índice de fatiga', 'Índice de fatiga (%)', '%', (e) => e.indice_fatiga],
-    ['Potencia', 'potencia inspiratoria', 'Potencia insp. (W)', 'W', (e) => e.potencia_insp],
-    ['Trabajo', 'trabajo', 'Trabajo (J)', 'J', (e) => e.trabajo],
-    ['Duty cycle', 'duty cycle', 'Duty cycle (%)', '%', (e) => e.duty_cycle],
-    ['Tiempo entre reps', 'tiempo entre repeticiones', 'Tiempo entre reps (s)', 's', (e) => e.tiempo_entre_reps],
-    ['Volumen total', 'volumen total', 'Volumen total (L)', 'L', (e) => e.volumen_total],
-  ])
+  const notasPaciente = useAnotaciones(Number(paciente.id))
+  const [generandoInforme, setGenerandoInforme] = useState(false)
+  const [errorInforme, setErrorInforme] = useState<string | null>(null)
+
+  async function descargarInforme() {
+    if (!token) return
+    setErrorInforme(null)
+    // Primero el diálogo de "Guardar como": el navegador sólo lo deja abrir justo después del click.
+    const destino = await elegirDestino(`Informe ${paciente.nombre} ${hoyIso}.pdf`, TIPO_PDF)
+    if (!destino) return
+    setGenerandoInforme(true)
+    try {
+      const perfilPaciente = (await api.medico.misPacientes(token)).find((p) => String(p.id_paciente) === paciente.id)
+      if (!perfilPaciente) throw new Error('No encontramos los datos del paciente.')
+      const { generarInformeGeneral } = await import('./pdfInforme')
+      const pdf = await generarInformeGeneral({
+        paciente: perfilPaciente,
+        medico: perfil?.rol === 'medico' ? `${perfil.datos.nombre} ${perfil.datos.apellido}` : '',
+        evaluaciones,
+        entrenamientos,
+        anotaciones: notasPaciente.anotaciones,
+      })
+      await destino.guardar(pdf)
+    } catch (err) {
+      setErrorInforme(err instanceof Error ? err.message : 'No se pudo generar el informe.')
+    } finally {
+      setGenerandoInforme(false)
+    }
+  }
 
   const valoresPim = evaluacionesCronologicas
     .map((e) => e.pim)
@@ -235,15 +212,26 @@ export function PatientDetail({ paciente, onDesvincular }: PatientDetailProps) {
     <div className="card">
       <div className="detail-title-row">
         <h2>{paciente.nombre}</h2>
-        <button
-          className="btn-icon btn-icon-pink"
-          onClick={() => setConfirmarDesvinculo(true)}
-          aria-label="Desvincular paciente"
-          title="Desvincular paciente"
-        >
-          <TrashIcon className="icon-16" />
-        </button>
+        <div className="detail-title-acciones">
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={descargarInforme}
+            disabled={generandoInforme || cargandoEvaluaciones || cargandoEntrenamientos || notasPaciente.cargando}
+            title="PDF con los datos del paciente, sus evaluaciones y entrenamientos a lo largo del tiempo, y las notas"
+          >
+            {generandoInforme ? 'Generando informe…' : 'Descargar informe'}
+          </button>
+          <button
+            className="btn-icon btn-icon-pink"
+            onClick={() => setConfirmarDesvinculo(true)}
+            aria-label="Desvincular paciente"
+            title="Desvincular paciente"
+          >
+            <TrashIcon className="icon-16" />
+          </button>
+        </div>
       </div>
+      {errorInforme && <div className="auth-alert error">{errorInforme}</div>}
 
       <div className="detail-header">
         <div className="detail-id">
@@ -296,7 +284,10 @@ export function PatientDetail({ paciente, onDesvincular }: PatientDetailProps) {
           ) : (
             <>
               {ultimaEvaluacion ? (
-                <TrendChartCarousel series={seriesEvaluaciones} />
+                <TrendChartCarousel
+                  series={seriesEvaluaciones}
+                  anotacionesDe={(serie) => (serie.clave ? notasPaciente.paraGrafico(serie.clave) : undefined)}
+                />
               ) : (
                 <p className="empty-state">Todavía no hay evaluaciones registradas.</p>
               )}
@@ -370,7 +361,10 @@ export function PatientDetail({ paciente, onDesvincular }: PatientDetailProps) {
           ) : (
             <>
               {ultimoEntrenamiento ? (
-                <TrendChartCarousel series={seriesEntrenamiento} />
+                <TrendChartCarousel
+                  series={seriesEntrenamiento}
+                  anotacionesDe={(serie) => (serie.clave ? notasPaciente.paraGrafico(serie.clave) : undefined)}
+                />
               ) : (
                 <p className="empty-state">Todavía no hay sesiones de entrenamiento registradas.</p>
               )}
