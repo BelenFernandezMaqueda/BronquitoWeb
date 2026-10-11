@@ -39,12 +39,12 @@ def actualizar_mi_perfil(
     """
     datos = payload.model_dump(exclude_unset=True, exclude_none=True)
 
-    nuevo_dni = datos.pop("dni", None)
-    if nuevo_dni is not None and nuevo_dni != paciente.dni:
-        ya_usado = db.query(Paciente).filter(Paciente.dni == nuevo_dni).first()
+    nuevo_usuario = datos.pop("nombre_usuario", None)
+    if nuevo_usuario is not None and nuevo_usuario != paciente.nombre_usuario:
+        ya_usado = db.query(Paciente).filter(Paciente.nombre_usuario == nuevo_usuario).first()
         if ya_usado is not None:
-            raise HTTPException(status_code=400, detail="Ya existe una cuenta con ese DNI.")
-        paciente.dni = nuevo_dni
+            raise HTTPException(status_code=400, detail="Ese nombre de usuario ya está en uso.")
+        paciente.nombre_usuario = nuevo_usuario
 
     nuevo_pin = datos.pop("pin", None)
     if nuevo_pin is not None:

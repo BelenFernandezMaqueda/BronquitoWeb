@@ -38,10 +38,10 @@ app/
                         los requests (por ejemplo, que el PIN tenga 4 dígitos).
   routers/
     auth.py               Médico: registro, login, olvidé contraseña / resetearla.
-                        Paciente: registro web, login (DNI+PIN), olvidé PIN /
-                        resetearlo.
+                        Paciente: registro web, login (nombre de usuario + PIN),
+                        olvidé PIN / resetearlo.
     medicos.py             Perfil del médico logueado, sus pacientes vinculados,
-                        vincular un paciente existente por DNI.
+                        vincular un paciente existente por nombre de usuario + PIN.
     pacientes.py            Perfil y edición de datos del paciente logueado
                         mediante `PATCH /pacientes/me`.
 ```
@@ -76,7 +76,7 @@ Con el stack levantado (`docker compose up`), hay tres formas:
 # Todos los pacientes y todos los médicos
 docker compose exec db mysql --default-character-set=utf8mb4 \
   -ubronquito -pchangeme_bronquito bronquito -e \
-  "SELECT id_paciente,nombre,apellido,dni,email FROM usuarios;
+  "SELECT id_paciente,nombre,apellido,nombre_usuario,email FROM usuarios;
    SELECT id_medico,nombre,apellido,usuario FROM medicos;"
 ```
 
@@ -117,6 +117,8 @@ MySQL está expuesto en `localhost:3306` mientras Docker corre. Datos de conexi�
 Las tablas `usuarios` y `medicos` sumaron columnas (`usuarios`: `nombre`, `apellido`,
 `email`, `enfermedades`, `acepto_terminos`, `fecha_aceptacion_terminos`, `reset_token`,
 `reset_token_expira`; `medicos`: `nombre`, `apellido`, y los mismos de reset/términos).
+Además, en `usuarios` la columna `dni` se reemplazó por `nombre_usuario`: si la base es
+de antes de ese cambio, la API no arranca y lo avisa en el log.
 Como `create_all()` sólo crea tablas que no existen — no actualiza las que ya existen —
 necesitás borrar la base vieja una vez antes de levantar de nuevo:
 
@@ -132,11 +134,11 @@ había datos de prueba, no se pierde nada real.
 
 **Médico:** `belen.fernandez@bronquito.app` / `medico1234` (Belén Fernández)
 
-**Pacientes (DNI / PIN):**
+**Pacientes (nombre de usuario / PIN):**
 
-- `45819569` / `1234` — Malena Salerno, perfil completo (con nombre y mail)
-- `38123456` / `5678` — Tomás Herrera, perfil completo (con nombre y mail)
-- `29987654` / `4321` — Rocío Fernández, perfil completo (con nombre y mail)
+- `msalerno` / `1234` — Malena Salerno, perfil completo (con nombre y mail)
+- `therrera` / `5678` — Tomás Herrera, perfil completo (con nombre y mail)
+- `rfernandez` / `4321` — Rocío Fernández, perfil completo (con nombre y mail)
 
 ## Probar el login desde /docs
 
@@ -193,6 +195,12 @@ enviar_email(destinatario='test@x.com', asunto='Prueba', html='<p>Hola</p>')"
 
 ## Decisiones a propósito (para que no parezcan olvidos)
 
+- **El paciente se identifica con un nombre de usuario, no con su DNI.** Sólo letras
+  a-z y ñ (sin números, tildes, espacios ni caracteres especiales), de 4 a 25, y único.
+  No distingue mayúsculas: se guarda siempre en minúscula (`Malena` → `malena`), así que
+  al loguearse da igual cómo lo escriba. Lo puede cambiar después desde Configuración.
+  La columna `usuarios.nombre_usuario` usa collation `utf8mb4_bin` para que MySQL no
+  trate `nino` y `niño` como el mismo usuario.
 - **No hay bloqueo de cuenta por intentos fallidos** (ni de PIN ni de contraseña) — lo
   charlamos y se decidió no incluirlo en esta primera versión.
 - **Los pacientes se registran directamente desde la página web, nunca vía un médico.**
@@ -200,10 +208,10 @@ enviar_email(destinatario='test@x.com', asunto='Prueba', html='<p>Hola</p>')"
 - **"Olvidé mi contraseña / PIN" manda el link por mail** (branded, ver sección "Mails")
   en un `BackgroundTask`. La respuesta HTTP es siempre el mismo mensaje genérico ("si la
   cuenta existe...") y nunca incluye el token — no se puede usar este endpoint para
-  averiguar qué mails/DNIs están registrados.
-- **El paciente puede identificarse por mail o por DNI** al pedir el reset de PIN; el médico
+  averiguar qué mails/usuarios están registrados.
+- **El paciente puede identificarse por mail o por nombre de usuario** al pedir el reset de PIN; el médico
   siempre por mail. El mecanismo interno (token, vencimiento) es el mismo.
-- **La vinculación médico-paciente es directa** (buscar por DNI + botón "Vincular"), sin
+- **La vinculación médico-paciente es directa** (usuario + PIN del paciente + botón "Vincular"), sin
   paso de aceptación por parte del paciente — así lo definieron para esta versión.
 
 ## Qué falta (para las próximas etapas, no de esta)

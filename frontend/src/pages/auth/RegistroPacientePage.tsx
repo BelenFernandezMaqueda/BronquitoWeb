@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 
 import { ApiError, api } from '../../api/client'
 import type { EnfermedadPreexistente, Sexo } from '../../api/types'
+import { errorNombreUsuario, NOMBRE_USUARIO_MAX, normalizarNombreUsuario } from '../../auth/nombreUsuario'
 import { useSession } from '../../auth/session'
 import { PasswordField } from '../../components/ui/PasswordField'
 import { AuthShell } from './AuthShell'
@@ -23,7 +24,7 @@ export function RegistroPacientePage() {
 
   const [nombre, setNombre] = useState('')
   const [apellido, setApellido] = useState('')
-  const [dni, setDni] = useState('')
+  const [nombreUsuario, setNombreUsuario] = useState('')
   const [pin, setPin] = useState('')
   const [pin2, setPin2] = useState('')
   const [email, setEmail] = useState('')
@@ -45,12 +46,9 @@ export function RegistroPacientePage() {
       setError('El nombre y el apellido no pueden contener números.')
       return
     }
-    if (!/^\d+$/.test(dni)) {
-      setError('El DNI solo puede contener números.')
-      return
-    }
-    if (!/^\d{7,8}$/.test(dni)) {
-      setError('El DNI debe tener entre 7 y 8 dígitos.')
+    const errorUsuario = errorNombreUsuario(nombreUsuario.trim())
+    if (errorUsuario) {
+      setError(errorUsuario)
       return
     }
     if (!/^\d{4}$/.test(pin)) {
@@ -72,7 +70,7 @@ export function RegistroPacientePage() {
     setEnviando(true)
     try {
       const res = await api.paciente.registro({
-        dni: dni.trim(),
+        nombre_usuario: nombreUsuario.trim(),
         pin,
         nombre: nombre.trim(),
         apellido: apellido.trim(),
@@ -135,13 +133,16 @@ export function RegistroPacientePage() {
 
         <div className="auth-row">
           <div className="field">
-            <label htmlFor="dni">DNI</label>
+            <label htmlFor="nombre-usuario">Nombre de usuario</label>
             <input
-              id="dni"
+              id="nombre-usuario"
               type="text"
-              inputMode="numeric"
-              value={dni}
-              onChange={(e) => setDni(e.target.value)}
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              maxLength={NOMBRE_USUARIO_MAX}
+              value={nombreUsuario}
+              onChange={(e) => setNombreUsuario(normalizarNombreUsuario(e.target.value))}
               required
             />
           </div>

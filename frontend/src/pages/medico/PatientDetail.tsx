@@ -481,7 +481,7 @@ export function PatientDetail({ paciente, onDesvincular }: PatientDetailProps) {
         >
           <p>
             ¿Desea desvincular a <strong>{paciente.nombre}</strong>? Perderá el acceso a su información clínica.
-            Podrá volver a vincularla en cualquier momento utilizando su DNI y PIN.
+            Podrá volver a vincularla en cualquier momento utilizando su nombre de usuario y PIN.
           </p>
           {errorDesvinculo && <div className="auth-alert error">{errorDesvinculo}</div>}
         </Modal>

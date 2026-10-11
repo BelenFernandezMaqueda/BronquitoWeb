@@ -90,14 +90,15 @@ def vincular_paciente(
     db: Session = Depends(get_db),
 ):
     """
-    Vinculación por DNI + PIN: el médico tiene que saber las credenciales del
-    paciente (se las pasa el paciente en persona), no alcanza con el DNI.
+    Vinculación por nombre de usuario + PIN: el médico tiene que saber las
+    credenciales del paciente (se las pasa el paciente en persona), no alcanza
+    con el usuario.
     Si coinciden, se crea la fila en medico_paciente al toque (sin pedirle
     confirmación al paciente — así lo definiste para esta versión).
     """
-    paciente = db.query(Paciente).filter(Paciente.dni == payload.dni).first()
+    paciente = db.query(Paciente).filter(Paciente.nombre_usuario == payload.nombre_usuario).first()
     if paciente is None:
-        raise HTTPException(status_code=404, detail="No existe ningún paciente con ese DNI.")
+        raise HTTPException(status_code=404, detail="No existe ningún paciente con ese nombre de usuario.")
 
     if not verificar_secreto(payload.pin, paciente.pin_hash):
         raise HTTPException(status_code=401, detail="PIN incorrecto.")

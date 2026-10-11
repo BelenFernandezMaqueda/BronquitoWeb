@@ -76,7 +76,7 @@ export function RecuperarPage() {
         <form onSubmit={onSubmit}>
           <div className="field">
             <label htmlFor="valor">
-              {tab === 'medico' ? 'Mail de tu cuenta' : 'Mail o DNI de tu cuenta'}
+              {tab === 'medico' ? 'Mail de tu cuenta' : 'Mail o nombre de usuario de tu cuenta'}
             </label>
             <input
               id="valor"

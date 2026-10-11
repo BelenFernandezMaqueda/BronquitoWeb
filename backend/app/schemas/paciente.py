@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from app.schemas.auth import EnfermedadPreexistente
+from app.schemas.auth import EnfermedadPreexistente, normalizar_nombre_usuario
 
 
 class PacientePerfilOut(BaseModel):
@@ -12,7 +12,7 @@ class PacientePerfilOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id_paciente: int
-    dni: str
+    nombre_usuario: str
     nombre: str | None
     apellido: str | None
     email: str | None
@@ -32,7 +32,7 @@ class PacientePerfilUpdate(BaseModel):
     (`PATCH /pacientes/me`).
     """
 
-    dni: str | None = Field(default=None, min_length=6, max_length=20)
+    nombre_usuario: str | None = None
     pin: str | None = Field(default=None, pattern=r"^\d{4}$", description="4 dígitos")
     nombre: str | None = Field(default=None, min_length=1, max_length=80)
     apellido: str | None = Field(default=None, min_length=1, max_length=80)
@@ -45,15 +45,12 @@ class PacientePerfilUpdate(BaseModel):
     enfermedades: list[EnfermedadPreexistente] | None = Field(default=None, min_length=1, max_length=6)
     acepto_terminos: bool | None = None
 
-    @field_validator("dni")
+    @field_validator("nombre_usuario")
     @classmethod
-    def dni_numerico(cls, valor: str | None) -> str | None:
+    def nombre_usuario_valido(cls, valor: str | None) -> str | None:
         if valor is None:
             return valor
-        dni = valor.strip()
-        if not dni.isdigit():
-            raise ValueError("El DNI solo puede contener números.")
-        return dni
+        return normalizar_nombre_usuario(valor)
 
     @field_validator("nombre", "apellido")
     @classmethod

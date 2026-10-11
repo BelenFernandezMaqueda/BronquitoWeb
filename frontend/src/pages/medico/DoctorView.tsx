@@ -18,9 +18,9 @@ function edadDesdeNacimiento(fechaIso: string): number {
   return edad
 }
 
-function inicialesDe(nombre: string | null, apellido: string | null, dni: string): string {
-  const letras = `${nombre?.[0] ?? ''}${apellido?.[0] ?? ''}`.toUpperCase()
-  return letras || dni.slice(0, 2)
+function inicialesDe(nombre: string | null, apellido: string | null, nombreUsuario: string): string {
+  const letras = `${nombre?.[0] ?? ''}${apellido?.[0] ?? ''}`
+  return (letras || nombreUsuario.slice(0, 2)).toUpperCase()
 }
 
 /**
@@ -32,10 +32,10 @@ function inicialesDe(nombre: string | null, apellido: string | null, dni: string
 function pacienteDesdeApi(p: PacientePerfil): Paciente {
   return {
     id: String(p.id_paciente),
-    nombre: `${p.nombre ?? ''} ${p.apellido ?? ''}`.trim() || `DNI ${p.dni}`,
-    dni: p.dni,
+    nombre: `${p.nombre ?? ''} ${p.apellido ?? ''}`.trim() || p.nombre_usuario,
+    nombreUsuario: p.nombre_usuario,
     email: p.email ?? '',
-    avatarIniciales: inicialesDe(p.nombre, p.apellido, p.dni),
+    avatarIniciales: inicialesDe(p.nombre, p.apellido, p.nombre_usuario),
     rol: 'paciente',
     edad: edadDesdeNacimiento(p.fecha_nacimiento),
     diagnostico: p.enfermedades ?? '',

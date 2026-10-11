@@ -31,7 +31,7 @@ export interface Paciente extends UsuarioBase {
   enfermedades?: string | null
   fechaNacimiento?: string
   /** No todos los pacientes mock lo tienen cargado; los que vienen de la API sí. */
-  dni?: string
+  nombreUsuario?: string
   /** Nivel de resistencia actual del dispositivo (escala del equipo, ej. 1-8). */
   resistenciaActual: number
   /** Frecuencia de entrenamiento recomendada, en sesiones por semana. */

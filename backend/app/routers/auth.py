@@ -2,7 +2,8 @@
 Todo el login/registro vive acá. Dos flujos parecidos pero separados:
 
 - MÉDICOS: se registran con mail + contraseña.
-- PACIENTES: se registran desde la web con DNI + PIN + mail + perfil clínico.
+- PACIENTES: se registran desde la web con nombre de usuario + PIN + mail +
+  perfil clínico.
 
 El vínculo médico↔paciente NO se crea acá: arranca desde la cuenta del
 médico (`POST /medicos/me/vincular`).
@@ -43,7 +44,7 @@ from app.schemas.auth import (
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 # Mensaje único para "olvidé..." exista o no la cuenta: así nadie puede usar
-# este endpoint para averiguar qué mails/DNIs están registrados.
+# este endpoint para averiguar qué mails/usuarios están registrados.
 _MENSAJE_RECUPERACION = "Si la cuenta existe, vas a recibir instrucciones para recuperar el acceso."
 
 
@@ -174,13 +175,13 @@ def registrar_paciente(payload: PacienteRegistro, db: Session = Depends(get_db))
     """
     Alta de paciente desde la web con sus datos y consentimiento completos.
     """
-    if db.query(Paciente).filter(Paciente.dni == payload.dni).first():
-        raise HTTPException(status_code=400, detail="Ya existe una cuenta con ese DNI.")
+    if db.query(Paciente).filter(Paciente.nombre_usuario == payload.nombre_usuario).first():
+        raise HTTPException(status_code=400, detail="Ese nombre de usuario ya está en uso.")
     if db.query(Paciente).filter(Paciente.email == payload.email).first():
         raise HTTPException(status_code=400, detail="Ya existe una cuenta con ese mail.")
 
     nuevo = Paciente(
-        dni=payload.dni,
+        nombre_usuario=payload.nombre_usuario,
         pin_hash=hashear_secreto(payload.pin),
         nombre=payload.nombre.strip(),
         apellido=payload.apellido.strip(),
@@ -206,13 +207,14 @@ def registrar_paciente(payload: PacienteRegistro, db: Session = Depends(get_db))
 @router.post("/pacientes/login", response_model=TokenOut)
 def login_paciente(payload: PacienteLogin, db: Session = Depends(get_db)):
     """
-    Login estándar con DNI + PIN contra una cuenta registrada en la web.
+    Login estándar con nombre de usuario + PIN contra una cuenta registrada
+    en la web.
     Sin bloqueo por intentos fallidos — decisión
     explícita para esta primera versión.
     """
-    paciente = db.query(Paciente).filter(Paciente.dni == payload.dni).first()
+    paciente = db.query(Paciente).filter(Paciente.nombre_usuario == payload.nombre_usuario).first()
 
-    credenciales_invalidas = HTTPException(status_code=401, detail="DNI o PIN incorrectos.")
+    credenciales_invalidas = HTTPException(status_code=401, detail="Usuario o PIN incorrectos.")
 
     if paciente is None:
         raise credenciales_invalidas
@@ -230,14 +232,15 @@ def olvide_pin(
     db: Session = Depends(get_db),
 ):
     """
-    El paciente se identifica con su mail o con su DNI. Si la cuenta no tiene
+    El paciente se identifica con su mail o con su nombre de usuario (que se
+    guarda en minúscula). Si la cuenta no tiene
     mail cargado no hay a dónde mandar el link — respondemos igual el mensaje
     genérico (no generamos token) para no revelar el estado de la cuenta.
     """
     ident = payload.identificador.strip()
     paciente = (
         db.query(Paciente)
-        .filter(or_(Paciente.email == ident, Paciente.dni == ident))
+        .filter(or_(Paciente.email == ident, Paciente.nombre_usuario == ident.lower()))
         .first()
     )
     if paciente is None or paciente.email is None:

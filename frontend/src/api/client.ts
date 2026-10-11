@@ -109,8 +109,12 @@ export const api = {
     actualizarPerfil: (token: string, body: MedicoPerfilUpdateBody) =>
       apiFetch<MedicoPerfil>('/medicos/me', { method: 'PATCH', body, token }),
     misPacientes: (token: string) => apiFetch<PacientePerfil[]>('/medicos/me/pacientes', { token }),
-    vincularPaciente: (token: string, dni: string, pin: string) =>
-      apiFetch<PacientePerfil>('/medicos/me/vincular', { method: 'POST', body: { dni, pin }, token }),
+    vincularPaciente: (token: string, nombreUsuario: string, pin: string) =>
+      apiFetch<PacientePerfil>('/medicos/me/vincular', {
+        method: 'POST',
+        body: { nombre_usuario: nombreUsuario, pin },
+        token,
+      }),
     desvincularPaciente: (token: string, idPaciente: number) =>
       apiFetch<void>(`/medicos/me/pacientes/${idPaciente}`, { method: 'DELETE', token }),
     evaluacionesDe: (token: string, idPaciente: number) =>

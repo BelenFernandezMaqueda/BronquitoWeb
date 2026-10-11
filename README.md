@@ -79,7 +79,7 @@ El login ya está conectado (hay cliente HTTP en `frontend/src/api/` y sesión e
 
 1. Reconciliar `frontend/src/types/index.ts` con los schemas del backend
    (`backend/app/schemas/`): hoy **no coinciden** — el mock tiene `nombre`/`edad`/
-   `diagnostico`, el backend tiene `dni`/`altura_cm`/`peso_kg`/`fecha_nacimiento`/`sexo`/
+   `diagnostico`, el backend tiene `nombre_usuario`/`altura_cm`/`peso_kg`/`fecha_nacimiento`/`sexo`/
    `fumador`.
 2. Crear en el backend los endpoints de evaluaciones / entrenamientos / rutina / notas
    médicas (por ahora sólo están las tablas).
