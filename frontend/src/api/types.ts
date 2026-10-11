@@ -36,7 +36,7 @@ export interface MedicoACargo {
 
 export interface PacientePerfil {
   id_paciente: number
-  dni: string
+  nombre_usuario: string
   nombre: string | null
   apellido: string | null
   email: string | null
@@ -125,12 +125,12 @@ export interface MedicoRegistroBody {
 }
 
 export interface PacienteLoginBody {
-  dni: string
+  nombre_usuario: string
   pin: string
 }
 
 export interface PacienteRegistroBody {
-  dni: string
+  nombre_usuario: string
   pin: string
   nombre: string
   apellido: string
@@ -145,7 +145,7 @@ export interface PacienteRegistroBody {
 }
 
 export interface PacientePerfilUpdateBody {
-  dni?: string
+  nombre_usuario?: string
   pin?: string
   nombre?: string
   apellido?: string

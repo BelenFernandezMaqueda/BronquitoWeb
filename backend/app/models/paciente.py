@@ -20,7 +20,13 @@ class Paciente(Base):
     __tablename__ = "usuarios"
 
     id_paciente: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    dni: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    # Sólo letras minúsculas (a-z y ñ), de 4 a 25 — ver
+    # `normalizar_nombre_usuario` en app/schemas/auth.py. La collation binaria
+    # hace que MySQL compare exacto: con la de por defecto (`_ai_ci`) "nino" y
+    # "niño" serían el mismo usuario.
+    nombre_usuario: Mapped[str] = mapped_column(
+        String(25, collation="utf8mb4_bin"), unique=True, index=True,
+    )
 
     # Se mantienen nullable para admitir perfiles previos a este flujo.
     nombre: Mapped[str | None] = mapped_column(String(80), nullable=True)

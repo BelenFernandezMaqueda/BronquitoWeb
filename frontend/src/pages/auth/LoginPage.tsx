@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { ApiError, api } from '../../api/client'
+import { errorNombreUsuario, NOMBRE_USUARIO_MAX, normalizarNombreUsuario } from '../../auth/nombreUsuario'
 import { useSession } from '../../auth/session'
 import { PasswordField } from '../../components/ui/PasswordField'
 import { AuthShell } from './AuthShell'
@@ -19,7 +20,7 @@ export function LoginPage() {
   const [enviando, setEnviando] = useState(false)
 
   // paciente
-  const [dni, setDni] = useState('')
+  const [nombreUsuario, setNombreUsuario] = useState('')
   const [pin, setPin] = useState('')
   // medico
   const [usuario, setUsuario] = useState('')
@@ -33,11 +34,18 @@ export function LoginPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    if (tab === 'paciente') {
+      const errorUsuario = errorNombreUsuario(nombreUsuario.trim())
+      if (errorUsuario) {
+        setError(errorUsuario)
+        return
+      }
+    }
     setEnviando(true)
     try {
       const res =
         tab === 'paciente'
-          ? await api.paciente.login({ dni: dni.trim(), pin })
+          ? await api.paciente.login({ nombre_usuario: nombreUsuario.trim(), pin })
           : await api.medico.login({ usuario: usuario.trim(), contrasena })
       await iniciarSesion(res.access_token, res.rol)
       navigate('/', { replace: true })
@@ -78,14 +86,16 @@ export function LoginPage() {
         {tab === 'paciente' ? (
           <>
             <div className="field">
-              <label htmlFor="dni">DNI</label>
+              <label htmlFor="nombre-usuario">Nombre de usuario</label>
               <input
-                id="dni"
+                id="nombre-usuario"
                 type="text"
-                inputMode="numeric"
                 autoComplete="username"
-                value={dni}
-                onChange={(e) => setDni(e.target.value)}
+                autoCapitalize="none"
+                spellCheck={false}
+                maxLength={NOMBRE_USUARIO_MAX}
+                value={nombreUsuario}
+                onChange={(e) => setNombreUsuario(normalizarNombreUsuario(e.target.value))}
                 required
               />
             </div>

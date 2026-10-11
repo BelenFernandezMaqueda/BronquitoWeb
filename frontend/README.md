@@ -72,10 +72,10 @@ src/
   pages/
     auth/
       AuthShell.tsx         Marco compartido (patito + tarjeta centrada) de las pantallas de auth.
-      LoginPage.tsx         Login con pestañas paciente (DNI+PIN) / médico (mail+contraseña).
+      LoginPage.tsx         Login con pestañas paciente (usuario+PIN) / médico (mail+contraseña).
       RegistroMedicoPage.tsx    Alta de médico.
-      RegistroPacientePage.tsx  Alta de paciente desde la web (nombre + DNI + PIN + mail +
-                           datos clínicos).
+      RegistroPacientePage.tsx  Alta de paciente desde la web (nombre + nombre de usuario +
+                           PIN + mail + datos clínicos).
       RecuperarPage.tsx     "Olvidé mi PIN / contraseña" — pide el link de reseteo.
       ResetearPage.tsx      Setea el nuevo PIN o contraseña con el token del link (?token=).
     paciente/
@@ -124,7 +124,7 @@ src/
   vistas paciente/médico (el Header y el saludo "Hola X" ya usan la sesión real; el resto
   no). Falta: reconciliar `src/types/index.ts` con los schemas del backend (el mock tiene
   `edad`/`diagnostico`/`resistenciaActual`; el backend tiene
-  `dni`/`nombre`/`apellido`/`email`/`altura_cm`/`peso_kg`/...), y crear los endpoints de
+  `nombre_usuario`/`nombre`/`apellido`/`email`/`altura_cm`/`peso_kg`/...), y crear los endpoints de
   evaluaciones / entrenamientos / rutina / notas que todavía no existen.
 - Persistencia real de acciones que hoy sólo cambian estado en memoria: enviar invitación,
   modificar frecuencia, resultado de una sesión en consultorio.

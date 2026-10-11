@@ -11,6 +11,12 @@ import type {
   PacientePerfilUpdateBody,
   Sexo,
 } from '../../api/types'
+import {
+  AYUDA_NOMBRE_USUARIO,
+  errorNombreUsuario,
+  NOMBRE_USUARIO_MAX,
+  normalizarNombreUsuario,
+} from '../../auth/nombreUsuario'
 import { useSession } from '../../auth/session'
 import { Modal } from '../../components/ui/Modal'
 import { PasswordField } from '../../components/ui/PasswordField'
@@ -189,7 +195,7 @@ function ConfiguracionMedico({ datos, token }: { datos: MedicoPerfil; token: str
 
 function ConfiguracionPaciente({ datos, token }: { datos: PacientePerfil; token: string }) {
   const { refrescarPerfil } = useSession()
-  const [dni, setDni] = useState(datos.dni)
+  const [nombreUsuario, setNombreUsuario] = useState(datos.nombre_usuario)
   const [nombre, setNombre] = useState(datos.nombre ?? '')
   const [apellido, setApellido] = useState(datos.apellido ?? '')
   const [email, setEmail] = useState(datos.email ?? '')
@@ -221,6 +227,11 @@ function ConfiguracionPaciente({ datos, token }: { datos: PacientePerfil; token:
       setError('El nombre y el apellido no pueden contener números.')
       return
     }
+    const errorUsuario = errorNombreUsuario(nombreUsuario.trim())
+    if (errorUsuario) {
+      setError(errorUsuario)
+      return
+    }
     if (enfermedades.length === 0) {
       setError('Elegí al menos una enfermedad preexistente.')
       return
@@ -237,6 +248,7 @@ function ConfiguracionPaciente({ datos, token }: { datos: PacientePerfil; token:
     }
 
     const body: PacientePerfilUpdateBody = {
+      nombre_usuario: nombreUsuario.trim(),
       nombre: nombre.trim(),
       apellido: apellido.trim(),
       email: email.trim(),
@@ -280,9 +292,18 @@ function ConfiguracionPaciente({ datos, token }: { datos: PacientePerfil; token:
         </div>
         <div className="auth-row">
           <div className="field">
-            <label htmlFor="config-dni">DNI</label>
-            <input id="config-dni" inputMode="numeric" value={dni} onChange={(event) => setDni(event.target.value)} disabled required />
-            <p className="field-hint">El DNI no se puede modificar.</p>
+            <label htmlFor="config-usuario">Nombre de usuario</label>
+            <input
+              id="config-usuario"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              maxLength={NOMBRE_USUARIO_MAX}
+              value={nombreUsuario}
+              onChange={(event) => setNombreUsuario(normalizarNombreUsuario(event.target.value))}
+              required
+            />
+            <p className="field-hint">{AYUDA_NOMBRE_USUARIO}</p>
           </div>
           <div className="field">
             <label htmlFor="config-email">Mail</label>

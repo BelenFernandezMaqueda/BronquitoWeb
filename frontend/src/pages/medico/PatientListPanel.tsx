@@ -28,7 +28,7 @@ export function PatientListPanel({ pacientes, pacienteSeleccionadoId, onSeleccio
       (p) =>
         normalizar(p.nombre).includes(q) ||
         normalizar(p.diagnostico).includes(q) ||
-        p.dni?.includes(q),
+        normalizar(p.nombreUsuario ?? '').includes(q),
     )
   }, [pacientes, busqueda])
 

@@ -23,11 +23,11 @@ export function Header() {
     etiquetaRol = 'Médico/a'
     ini = iniciales(nombre, apellido, usuario)
   } else if (perfil?.rol === 'paciente') {
-    const { nombre, apellido, email, dni } = perfil.datos
+    const { nombre, apellido, email, nombre_usuario } = perfil.datos
     const nombreCompleto = `${nombre ?? ''} ${apellido ?? ''}`.trim()
-    nombreMostrado = nombreCompleto || email || `DNI ${dni}`
+    nombreMostrado = nombreCompleto || email || nombre_usuario
     etiquetaRol = 'Paciente'
-    ini = iniciales(nombre ?? '', apellido ?? '', email ?? dni)
+    ini = iniciales(nombre ?? '', apellido ?? '', email ?? nombre_usuario)
   }
 
   return (

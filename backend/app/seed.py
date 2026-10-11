@@ -7,10 +7,10 @@ Médico de prueba:
     usuario:    belen.fernandez@bronquito.app
     contraseña: medico1234
 
-Pacientes de prueba (dni / pin):
-    45819569 / 1234   (Malena Salerno) — perfil completo (con mail)
-    38123456 / 5678   (Tomás Herrera)  — perfil completo (con mail)
-    29987654 / 4321   (Rocío Fernández)
+Pacientes de prueba (nombre de usuario / pin):
+    msalerno / 1234   (Malena Salerno) — perfil completo (con mail)
+    therrera  / 5678   (Tomás Herrera)  — perfil completo (con mail)
+    rfernandez  / 4321   (Rocío Fernández)
 """
 
 import csv
@@ -94,7 +94,7 @@ def seed_if_empty(db: Session) -> None:
     # Pacientes de ejemplo registrados con el perfil web completo.
     pacientes = [
         Paciente(
-            dni="45819569", pin_hash=hashear_secreto("1234"),
+            nombre_usuario="msalerno", pin_hash=hashear_secreto("1234"),
             nombre="Malena", apellido="Salerno",
             email="malena.salerno@mail.com",
             altura_cm=171, peso_kg=70, fecha_nacimiento=date(2004, 5, 31),
@@ -103,7 +103,7 @@ def seed_if_empty(db: Session) -> None:
             fecha_aceptacion_terminos=datetime(2026, 7, 18, tzinfo=timezone.utc),
         ),
         Paciente(
-            dni="38123456", pin_hash=hashear_secreto("5678"),
+            nombre_usuario="therrera", pin_hash=hashear_secreto("5678"),
             nombre="Tomás", apellido="Herrera",
             email="tomas.herrera@mail.com",
             altura_cm=178, peso_kg=82, fecha_nacimiento=date(1998, 3, 14),
@@ -112,7 +112,7 @@ def seed_if_empty(db: Session) -> None:
             fecha_aceptacion_terminos=datetime(2026, 6, 1, tzinfo=timezone.utc),
         ),
         Paciente(
-            dni="29987654", pin_hash=hashear_secreto("4321"),
+            nombre_usuario="rfernandez", pin_hash=hashear_secreto("4321"),
             nombre="Rocío", apellido="Fernández",
             email="rocio.fernandez@mail.com",
             altura_cm=160, peso_kg=65, fecha_nacimiento=date(1965, 11, 2),

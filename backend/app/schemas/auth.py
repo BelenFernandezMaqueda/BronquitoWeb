@@ -1,3 +1,5 @@
+import re
+import unicodedata
 from datetime import date
 from typing import Literal
 
@@ -17,6 +19,24 @@ def validar_nombre_sin_numeros(valor: str) -> str:
     if any(caracter.isdigit() for caracter in valor):
         raise ValueError("El nombre y el apellido no pueden contener números.")
     return valor
+
+
+_PATRON_NOMBRE_USUARIO = re.compile(r"[a-zñ]{4,25}")
+
+
+def normalizar_nombre_usuario(valor: str) -> str:
+    """
+    Nombre de usuario del paciente: sin distinguir mayúsculas (se guarda
+    siempre en minúscula), sólo letras a-z y ñ, de 4 a 25. El NFC junta una
+    "ñ" que llegue como "n" + tilde combinable en un solo carácter.
+    """
+    usuario = unicodedata.normalize("NFC", valor.strip()).lower()
+    if not _PATRON_NOMBRE_USUARIO.fullmatch(usuario):
+        raise ValueError(
+            "El nombre de usuario debe tener entre 4 y 25 letras, sin números, "
+            "tildes, espacios ni caracteres especiales."
+        )
+    return usuario
 
 
 # --- Médicos ---------------------------------------------------------------
@@ -57,7 +77,7 @@ class PacienteRegistro(BaseModel):
     Registro web del paciente con sus datos personales y clínicos completos.
     """
 
-    dni: str = Field(min_length=6, max_length=20)
+    nombre_usuario: str
     pin: str = Field(pattern=r"^\d{4}$", description="4 dígitos")
     nombre: str = Field(min_length=1, max_length=80)
     apellido: str = Field(min_length=1, max_length=80)
@@ -69,6 +89,11 @@ class PacienteRegistro(BaseModel):
     fumador: bool = False
     enfermedades: list[EnfermedadPreexistente] = Field(min_length=1, max_length=6)
     acepto_terminos: bool
+
+    @field_validator("nombre_usuario")
+    @classmethod
+    def nombre_usuario_valido(cls, valor: str) -> str:
+        return normalizar_nombre_usuario(valor)
 
     @field_validator("nombre", "apellido")
     @classmethod
@@ -91,8 +116,13 @@ class PacienteRegistro(BaseModel):
 
 
 class PacienteLogin(BaseModel):
-    dni: str = Field(min_length=6, max_length=20)
+    nombre_usuario: str
     pin: str = Field(pattern=r"^\d{4}$", description="4 dígitos")
+
+    @field_validator("nombre_usuario")
+    @classmethod
+    def nombre_usuario_valido(cls, valor: str) -> str:
+        return normalizar_nombre_usuario(valor)
 
 
 # --- Salida común -------------------------------------------------------
@@ -106,7 +136,7 @@ class TokenOut(BaseModel):
 
 # --- Recuperar credencial (mismo mecanismo para médico y paciente) ------
 # El médico se identifica siempre por mail; el paciente puede identificarse
-# por mail o por DNI, pero el flujo interno (generar token, vencimiento,
+# por mail o por nombre de usuario, pero el flujo interno (generar token, vencimiento,
 # respuesta genérica, standin de desarrollo) es idéntico en los dos casos.
 
 
@@ -117,7 +147,7 @@ class OlvideContrasenaRequest(BaseModel):
 
 
 class OlvidePinRequest(BaseModel):
-    """Paciente: 'olvidé mi PIN'. `identificador` = su mail o su DNI."""
+    """Paciente: 'olvidé mi PIN'. `identificador` = su mail o su nombre de usuario."""
 
     identificador: str = Field(min_length=4)
 

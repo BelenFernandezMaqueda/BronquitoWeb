@@ -2,6 +2,8 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.schemas.auth import normalizar_nombre_usuario
+
 
 class MedicoPerfilOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -38,5 +40,10 @@ class MedicoPerfilUpdate(BaseModel):
 
 
 class VincularPacienteRequest(BaseModel):
-    dni: str
+    nombre_usuario: str
     pin: str
+
+    @field_validator("nombre_usuario")
+    @classmethod
+    def nombre_usuario_valido(cls, valor: str) -> str:
+        return normalizar_nombre_usuario(valor)
