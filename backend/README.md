@@ -136,9 +136,9 @@ había datos de prueba, no se pierde nada real.
 
 **Pacientes (nombre de usuario / PIN):**
 
-- `malena` / `1234` — Malena Salerno, perfil completo (con nombre y mail)
-- `tomas` / `5678` — Tomás Herrera, perfil completo (con nombre y mail)
-- `rocio` / `4321` — Rocío Fernández, perfil completo (con nombre y mail)
+- `msalerno` / `1234` — Malena Salerno, perfil completo (con nombre y mail)
+- `therrera` / `5678` — Tomás Herrera, perfil completo (con nombre y mail)
+- `rfernandez` / `4321` — Rocío Fernández, perfil completo (con nombre y mail)
 
 ## Probar el login desde /docs
 

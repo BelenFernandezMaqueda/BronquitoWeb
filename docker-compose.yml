@@ -14,7 +14,11 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      # 127.0.0.1 (no "localhost") fuerza el ping por TCP. Con una base
+      # nueva, MySQL primero levanta un servidor temporal sin red para
+      # inicializarse; por socket ese servidor ya responde y la API arrancaba
+      # antes de tiempo ("Connection refused").
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 5s
       timeout: 5s
       retries: 10
