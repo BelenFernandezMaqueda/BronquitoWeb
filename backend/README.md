@@ -4,11 +4,9 @@ Backend de la plataforma Bronquito. Modela las 9 tablas del documento de arquite
 (pacientes, médicos, vínculo médico-paciente, evaluaciones, entrenamientos, rutina activa,
 notas médicas) y expone login real:
 
-- **Médicos**: se registran con mail + contraseña.
-- **Pacientes**: inician sesión con DNI + PIN. Su cuenta puede haber nacido de dos lados
-  (columna `origen`): del **dispositivo** (la OLED genera DNI + PIN; puede llegar sin mail,
-  que el paciente completa después) o de la **web** (registro con el formulario completo,
-  mail incluido). El vínculo con un médico se crea siempre después, desde la cuenta del
+- **Médicos**: se registran con mail + contraseña (y nombre y apellido) o inician sesión.
+- **Pacientes**: se registran con varios datos: usuario,  PIN de 4 dígitos, altura, peso, condiciones preexistentes, etc o puede iniciar sesión.  
+- El vínculo con un médico se crea siempre después, desde la cuenta del
   médico — nunca al registrarse.
 
 Recuperar la credencial ("olvidé mi contraseña" del médico / "olvidé mi PIN" del paciente)
@@ -139,12 +137,7 @@ había datos de prueba, no se pierde nada real.
 
 - `45819569` / `1234` — Malena Salerno, perfil completo (con nombre y mail)
 - `38123456` / `5678` — Tomás Herrera, perfil completo (con nombre y mail)
-- `29987654` / `4321` — Rocío Fernández, **sin mail**: al loguearse, el front lo manda a la
-  pantalla "completá tu perfil" (`perfil_completo: false` en `GET /pacientes/me`). Sirve
-  para probar ese flujo y el `PATCH /pacientes/me`.
-
-Todos los pacientes de `seed.py` tienen `origen: "DISPOSITIVO"`. Para probar el registro
-web, usá `POST /auth/pacientes/registro` con un DNI y un mail nuevos.
+- `29987654` / `4321` — Rocío Fernández, perfil completo (con nombre y mail)
 
 ## Probar el login desde /docs
 
@@ -203,18 +196,8 @@ enviar_email(destinatario='test@x.com', asunto='Prueba', html='<p>Hola</p>')"
 
 - **No hay bloqueo de cuenta por intentos fallidos** (ni de PIN ni de contraseña) — lo
   charlamos y se decidió no incluirlo en esta primera versión.
-- **Los pacientes se registran de dos formas, nunca vía un médico.** O los crea el
-  dispositivo (`origen: "DISPOSITIVO"`, llegan por sync de la micro SD — por ahora,
-  `seed.py`), o los crea el propio paciente desde la web (`POST /auth/pacientes/registro`,
-  `origen: "WEB"`, formulario con perfil clínico completo). El médico sólo puede
-  **vincularse** a un paciente que ya existe.
-- **Nombre, apellido y mail del paciente son opcionales en la base pero obligatorios para
-  entrar a la web.** Las cuentas del dispositivo pueden llegar sin ninguno de los tres
-  (sólo DNI + PIN); `GET /pacientes/me` devuelve `perfil_completo: false` mientras falte
-  alguno o no haya aceptado los términos, y el front las frena en "completá tu perfil"
-  hasta que los carguen vía `PATCH /pacientes/me`. Sin mail no hay forma de recuperar el
-  PIN. El médico necesita el nombre para identificar a sus pacientes (no alcanza el DNI).
-  El médico, en cambio, siempre carga nombre y apellido al registrarse.
+- **Los pacientes se registran directamente desde la página web, nunca vía un médico.**
+  El propio paciente se registra desde la web. El médico sólo puede vincularse a un paciente que ya existe ingresando el usuario y el PIN del paciente. 
 - **"Olvidé mi contraseña / PIN" manda el link por mail** (branded, ver sección "Mails")
   en un `BackgroundTask`. La respuesta HTTP es siempre el mismo mensaje genérico ("si la
   cuenta existe...") y nunca incluye el token — no se puede usar este endpoint para
@@ -235,7 +218,5 @@ enviar_email(destinatario='test@x.com', asunto='Prueba', html='<p>Hola</p>')"
 - **Verificación de la dirección de mail** (columna `email_verificado` + token + endpoints
   `verificar-email` / `reenviar-verificacion` + página en el front). La infra de envío
   (`app/core/email.py` + `email_templates.py`) ya está lista y probada con el flujo de reset.
-- Sincronización dispositivo → base. Cuando se defina, la sync tiene que correr **antes**
-  del login (así el paciente ya existe en la web cuando intenta entrar).
 - Que el paciente y el médico también puedan resetear con el mismo endpoint unificado (hoy
   son dos rutas paralelas que comparten la lógica interna).
