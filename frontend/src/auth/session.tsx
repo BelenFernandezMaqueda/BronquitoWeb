@@ -26,7 +26,7 @@ interface Sesion {
   perfil: Perfil | null
   iniciarSesion: (token: string, rol: Rol) => Promise<void>
   cerrarSesion: () => void
-  /** Re-consulta el perfil (ej. después de completar los datos del paciente). */
+  /** Re-consulta el perfil después de editarlo. */
   refrescarPerfil: () => Promise<void>
 }
 

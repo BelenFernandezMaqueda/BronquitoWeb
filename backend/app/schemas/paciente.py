@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.schemas.auth import EnfermedadPreexistente
 
@@ -23,30 +23,13 @@ class PacientePerfilOut(BaseModel):
     fumador: bool
     enfermedades: str | None
     fecha_registro: date
-    origen: str
     acepto_terminos: bool
-
-    @computed_field
-    @property
-    def perfil_completo(self) -> bool:
-        """
-        False mientras al paciente le falte nombre, apellido, mail o aceptar
-        los términos — el front usa esto para mostrar la pantalla bloqueante
-        "completá tu perfil" antes de dejarlo entrar al dashboard.
-        """
-        return (
-            bool(self.nombre)
-            and bool(self.apellido)
-            and self.email is not None
-            and self.acepto_terminos
-        )
 
 
 class PacientePerfilUpdate(BaseModel):
     """
-    Con lo que el paciente completa/edita su perfil una vez logueado
-    (`PATCH /pacientes/me`). Todo opcional: el caso principal es la cuenta
-    creada por el dispositivo que sólo carga el mail y acepta los términos.
+    Campos opcionales para editar el perfil del paciente logueado
+    (`PATCH /pacientes/me`).
     """
 
     dni: str | None = Field(default=None, min_length=6, max_length=20)

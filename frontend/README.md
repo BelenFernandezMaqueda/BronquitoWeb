@@ -78,9 +78,6 @@ src/
                            datos clínicos).
       RecuperarPage.tsx     "Olvidé mi PIN / contraseña" — pide el link de reseteo.
       ResetearPage.tsx      Setea el nuevo PIN o contraseña con el token del link (?token=).
-    paciente/
-      CompletarPerfilPage.tsx  Pantalla bloqueante para cuentas del dispositivo sin mail:
-                           no entran al dashboard hasta cargar nombre + mail + aceptar términos.
     paciente/PatientDashboard.tsx   Vista paciente: hero + botón "iniciar sesión de hoy",
                            3 stat cards, racha semanal, sesiones recientes, calendario
                            completo e historial (como sub-vistas dentro de la misma página).
@@ -92,7 +89,7 @@ src/
                            iniciar evaluación/entrenamiento "en consultorio".
       FrequencyModal.tsx    Modal para modificar manualmente la frecuencia recomendada.
   App.tsx                    Rutas (react-router-dom) + guards: SoloAnonimos / SoloAutenticados,
-                           redirección a "completá tu perfil", y el dashboard según rol.
+                           y el dashboard según rol.
   main.tsx                   Punto de entrada: <BrowserRouter> + <SessionProvider> + <App>.
 ```
 
@@ -105,10 +102,8 @@ src/
   link de reseteo que llega por mail (`/resetear/pin?token=...`). El servidor de Vite ya
   hace el fallback a `index.html`; un deploy de producción con nginx necesita esa misma
   regla.
-- **Paciente con perfil incompleto = pantalla bloqueante.** Si `GET /pacientes/me` devuelve
-  `perfil_completo: false` (cuenta del dispositivo a la que le falta nombre, mail o aceptar
-  términos), el guard de rutas lo manda a `/completar-perfil` y no lo deja entrar al
-  dashboard hasta que lo complete. `CompletarPerfilPage` sólo muestra los campos que faltan.
+- **Registro web completo.** Pacientes y médicos crean su cuenta desde sus formularios web;
+  el paciente carga ahí sus datos personales, clínicos, mail y aceptación de términos.
 - **El link de reseteo llega por mail.** `RecuperarPage` sólo confirma "revisá tu casilla";
   el backend manda el mail con el link a `/resetear/{pin,contrasena}?token=...` por Gmail
   (ver `backend/README.md`, sección "Mails").
@@ -118,9 +113,7 @@ src/
   donde después se conecta el fetch a la API real.
 - **"Iniciar sesión" / "Iniciar en consultorio" son simulaciones visuales.** El
   `DeviceSessionModal` simula el paso de "conectando → sesión en curso → resultado" con
-  timers cortos, para poder mostrar el flujo sin hardware real. Los datos que se
-  sincronizan de verdad desde el dispositivo (offline → wifi → base de datos) quedan fuera
-  del alcance de esta web, tal como se aclaró en el pedido.
+  timers cortos, para poder mostrar el flujo sin hardware real.
 - **Vínculo médico-paciente explícito.** `pacientesDeMedico()` sólo devuelve pacientes con
   un vínculo en estado `aceptada`; hay además una invitación en estado `pendiente` mockeada
   para mostrar cómo se ve mientras el paciente todavía no aceptó.

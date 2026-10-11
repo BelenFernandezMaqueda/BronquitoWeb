@@ -47,10 +47,7 @@ export interface PacientePerfil {
   fumador: boolean
   enfermedades: string | null
   fecha_registro: string
-  origen: 'DISPOSITIVO' | 'WEB'
   acepto_terminos: boolean
-  /** false mientras al paciente le falte mail o aceptar términos. */
-  perfil_completo: boolean
 }
 
 export type TipoEvaluacion = 'ESPIROMETRIA' | 'PIM_PEM'

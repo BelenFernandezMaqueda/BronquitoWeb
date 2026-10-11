@@ -5,11 +5,9 @@ Backend de la plataforma Bronquito. Modela las 9 tablas del documento de arquite
 notas médicas) y expone login real:
 
 - **Médicos**: se registran con mail + contraseña.
-- **Pacientes**: inician sesión con DNI + PIN. Su cuenta puede haber nacido de dos lados
-  (columna `origen`): del **dispositivo** (la OLED genera DNI + PIN; puede llegar sin mail,
-  que el paciente completa después) o de la **web** (registro con el formulario completo,
-  mail incluido). El vínculo con un médico se crea siempre después, desde la cuenta del
-  médico — nunca al registrarse.
+- **Pacientes**: se registran desde la web con el formulario completo e inician sesión con
+  DNI + PIN. El vínculo con un médico se crea después, desde la cuenta del médico — nunca
+  al registrarse.
 
 Recuperar la credencial ("olvidé mi contraseña" del médico / "olvidé mi PIN" del paciente)
 usa el mismo mecanismo de token para los dos roles.
@@ -44,9 +42,8 @@ app/
                         resetearlo.
     medicos.py             Perfil del médico logueado, sus pacientes vinculados,
                         vincular un paciente existente por DNI.
-    pacientes.py            Perfil del paciente logueado y `PATCH /pacientes/me`
-                        para completar/editar su mail y datos (pantalla
-                        "completá tu perfil" de las cuentas que vienen sin mail).
+    pacientes.py            Perfil y edición de datos del paciente logueado
+                        mediante `PATCH /pacientes/me`.
 ```
 
 ## Las 9 tablas (y qué clase de Python es cada una)
@@ -79,7 +76,7 @@ Con el stack levantado (`docker compose up`), hay tres formas:
 # Todos los pacientes y todos los médicos
 docker compose exec db mysql --default-character-set=utf8mb4 \
   -ubronquito -pchangeme_bronquito bronquito -e \
-  "SELECT id_paciente,nombre,apellido,dni,email,origen FROM usuarios;
+  "SELECT id_paciente,nombre,apellido,dni,email FROM usuarios;
    SELECT id_medico,nombre,apellido,usuario FROM medicos;"
 ```
 
@@ -118,7 +115,7 @@ MySQL está expuesto en `localhost:3306` mientras Docker corre. Datos de conexi�
 ## ⚠️ Si ya habías levantado el proyecto antes de este cambio
 
 Las tablas `usuarios` y `medicos` sumaron columnas (`usuarios`: `nombre`, `apellido`,
-`email`, `enfermedades`, `origen`, `acepto_terminos`, `fecha_aceptacion_terminos`, `reset_token`,
+`email`, `enfermedades`, `acepto_terminos`, `fecha_aceptacion_terminos`, `reset_token`,
 `reset_token_expira`; `medicos`: `nombre`, `apellido`, y los mismos de reset/términos).
 Como `create_all()` sólo crea tablas que no existen — no actualiza las que ya existen —
 necesitás borrar la base vieja una vez antes de levantar de nuevo:
@@ -137,14 +134,11 @@ había datos de prueba, no se pierde nada real.
 
 **Pacientes (DNI / PIN):**
 
-- `45819569` / `1234` — Malena Salerno, perfil completo (con nombre y mail)
-- `38123456` / `5678` — Tomás Herrera, perfil completo (con nombre y mail)
-- `29987654` / `4321` — Rocío Fernández, **sin mail**: al loguearse, el front lo manda a la
-  pantalla "completá tu perfil" (`perfil_completo: false` en `GET /pacientes/me`). Sirve
-  para probar ese flujo y el `PATCH /pacientes/me`.
+- `45819569` / `1234` — Malena Salerno
+- `38123456` / `5678` — Tomás Herrera
+- `29987654` / `4321` — Rocío Fernández
 
-Todos los pacientes de `seed.py` tienen `origen: "DISPOSITIVO"`. Para probar el registro
-web, usá `POST /auth/pacientes/registro` con un DNI y un mail nuevos.
+Los tres tienen mail, datos clínicos y términos aceptados, como en un alta web.
 
 ## Probar el login desde /docs
 
@@ -203,18 +197,12 @@ enviar_email(destinatario='test@x.com', asunto='Prueba', html='<p>Hola</p>')"
 
 - **No hay bloqueo de cuenta por intentos fallidos** (ni de PIN ni de contraseña) — lo
   charlamos y se decidió no incluirlo en esta primera versión.
-- **Los pacientes se registran de dos formas, nunca vía un médico.** O los crea el
-  dispositivo (`origen: "DISPOSITIVO"`, llegan por sync de la micro SD — por ahora,
-  `seed.py`), o los crea el propio paciente desde la web (`POST /auth/pacientes/registro`,
-  `origen: "WEB"`, formulario con perfil clínico completo). El médico sólo puede
+- **Los pacientes se registran desde la web, nunca vía un médico.** El formulario pide
+  nombre, apellido, mail, datos clínicos y aceptación de términos. El médico sólo puede
   **vincularse** a un paciente que ya existe.
-- **Nombre, apellido y mail del paciente son opcionales en la base pero obligatorios para
-  entrar a la web.** Las cuentas del dispositivo pueden llegar sin ninguno de los tres
-  (sólo DNI + PIN); `GET /pacientes/me` devuelve `perfil_completo: false` mientras falte
-  alguno o no haya aceptado los términos, y el front las frena en "completá tu perfil"
-  hasta que los carguen vía `PATCH /pacientes/me`. Sin mail no hay forma de recuperar el
-  PIN. El médico necesita el nombre para identificar a sus pacientes (no alcanza el DNI).
-  El médico, en cambio, siempre carga nombre y apellido al registrarse.
+- **El perfil se completa durante el registro.** Nombre, apellido y mail se piden en el
+  alta web; el paciente puede editarlos luego desde su configuración. El médico también
+  carga nombre y apellido al registrarse.
 - **"Olvidé mi contraseña / PIN" manda el link por mail** (branded, ver sección "Mails")
   en un `BackgroundTask`. La respuesta HTTP es siempre el mismo mensaje genérico ("si la
   cuenta existe...") y nunca incluye el token — no se puede usar este endpoint para
@@ -235,7 +223,5 @@ enviar_email(destinatario='test@x.com', asunto='Prueba', html='<p>Hola</p>')"
 - **Verificación de la dirección de mail** (columna `email_verificado` + token + endpoints
   `verificar-email` / `reenviar-verificacion` + página en el front). La infra de envío
   (`app/core/email.py` + `email_templates.py`) ya está lista y probada con el flujo de reset.
-- Sincronización dispositivo → base. Cuando se defina, la sync tiene que correr **antes**
-  del login (así el paciente ya existe en la web cuando intenta entrar).
 - Que el paciente y el médico también puedan resetear con el mismo endpoint unificado (hoy
   son dos rutas paralelas que comparten la lógica interna).

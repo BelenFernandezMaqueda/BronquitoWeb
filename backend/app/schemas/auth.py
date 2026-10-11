@@ -54,11 +54,7 @@ class MedicoLogin(BaseModel):
 
 class PacienteRegistro(BaseModel):
     """
-    Registro de paciente DESDE LA WEB (`origen = "web"`). Pide todo el perfil
-    clínico de una, porque acá no hay un dispositivo que lo aporte después.
-
-    Las cuentas que nacen del dispositivo NO pasan por este schema: llegan ya
-    creadas y completan lo que falte (el mail) con `PATCH /pacientes/me`.
+    Registro web del paciente con sus datos personales y clínicos completos.
     """
 
     dni: str = Field(min_length=6, max_length=20)
