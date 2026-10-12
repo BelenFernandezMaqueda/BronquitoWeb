@@ -66,7 +66,7 @@ export function formatearMomentoNota(nota: Anotacion): string {
   return nota.editado_en ? `${momento} (editada)` : momento
 }
 
-/** Las notas de un punto en una sola celda de CSV. */
-export function textoNotasCsv(notas: Anotacion[] | undefined): string {
-  return (notas ?? []).map((nota) => `${nota.texto} (${nota.autor})`).join(' | ')
+/** Una nota dentro de la columna "Notas" de un CSV, con el gráfico al que pertenece. */
+export function notaParaCsv(nota: Anotacion, grafico: string): string {
+  return `${grafico}: ${nota.texto} (${nota.autor})`
 }

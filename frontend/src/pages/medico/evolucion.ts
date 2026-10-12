@@ -1,11 +1,13 @@
-import type { Entrenamiento, Evaluacion } from '../../api/types'
+import type { Anotacion, Entrenamiento, Evaluacion } from '../../api/types'
 import type { SerieTendencia } from '../../components/ui/TrendChartCarousel'
+import { notaParaCsv } from '../../anotaciones/notas'
 import { claveGraficoEvolucion } from '../../anotaciones/useAnotaciones'
 import { formatearFecha } from '../../data/mockData'
+import { aCsv } from '../../exportar/archivos'
 
 /**
  * Qué se grafica en la evolución del paciente, en un solo lugar: lo usan la
- * ficha del paciente y el informe general en PDF.
+ * ficha del paciente, su CSV y el informe general en PDF.
  */
 
 /** Una sesión de consultorio: la espirometría y el PIM que se tomaron juntos. */
@@ -64,6 +66,11 @@ export const VARIABLES_ENTRENAMIENTO: VariableEvolucion<Entrenamiento>[] = [
   { id: 'volumen-total', nombreCorto: 'Volumen total', etiqueta: 'volumen total', etiquetaEje: 'Volumen total (L)', unidad: 'L', valor: (e) => e.volumen_total },
 ]
 
+/** Fecha y hora para el CSV y el detalle de un punto, ej. "2026-10-11 10:15". */
+function fechaHoraCompleta(fechaHora: string): string {
+  return fechaHora.replace('T', ' ').slice(0, 16)
+}
+
 const PALETA_SERIES = ['#F0459A', '#2FA7A0', '#7C5CF0', '#E0A030', '#3B82F6', '#D1234F', '#1F9D64', '#B9820C']
 
 /** Arma una serie por variable, salteando los valores vacíos. `datos` en orden cronológico. */
@@ -72,7 +79,6 @@ function construirSeries<T extends { fecha_hora: string }>(
   datos: T[],
   idDe: (item: T) => number,
   variables: VariableEvolucion<T>[],
-  nombrePaciente: string,
 ): SerieTendencia[] {
   return variables.map((variable, i) => {
     const puntos = datos
@@ -88,25 +94,67 @@ function construirSeries<T extends { fecha_hora: string }>(
       fechas: puntos.map((p) => formatearFecha(p.item.fecha_hora)),
       clave: claveGraficoEvolucion(grupo, variable.id),
       clavesPuntos: puntos.map((p) => String(idDe(p.item))),
-      fechasCompletas: puntos.map((p) => p.item.fecha_hora.replace('T', ' ').slice(0, 16)),
-      nombreCsv: `${nombrePaciente} - Evolución ${variable.nombreCorto}`,
+      fechasCompletas: puntos.map((p) => fechaHoraCompleta(p.item.fecha_hora)),
     }
   })
 }
 
-export function seriesDeEvaluaciones(evaluacionesCronologicas: Evaluacion[], nombrePaciente: string): SerieTendencia[] {
-  return construirSeries('evaluaciones', evaluacionesCronologicas, (e) => e.id_evaluacion, VARIABLES_EVALUACION, nombrePaciente)
+export function seriesDeEvaluaciones(evaluacionesCronologicas: Evaluacion[]): SerieTendencia[] {
+  return construirSeries('evaluaciones', evaluacionesCronologicas, (e) => e.id_evaluacion, VARIABLES_EVALUACION)
 }
 
-export function seriesDeEntrenamientos(
-  entrenamientosCronologicos: Entrenamiento[],
-  nombrePaciente: string,
-): SerieTendencia[] {
-  return construirSeries(
+export function seriesDeEntrenamientos(entrenamientosCronologicos: Entrenamiento[]): SerieTendencia[] {
+  return construirSeries('entrenamientos', entrenamientosCronologicos, (e) => e.id_entrenamiento, VARIABLES_ENTRENAMIENTO)
+}
+
+/**
+ * CSV con todos los puntos de los gráficos de evolución de una pestaña: una
+ * fila por fecha, una columna por variable y, en "Notas", las notas de esos
+ * puntos aclarando de qué variable es cada una. Cada fila puede juntar
+ * varios registros de la misma fecha (la espirometría y el PIM de una sesión).
+ */
+function csvDeEvolucion<T extends { fecha_hora: string }>(
+  grupo: 'evaluaciones' | 'entrenamientos',
+  filas: T[][],
+  variables: VariableEvolucion<T>[],
+  idDe: (item: T) => number,
+  anotaciones: Anotacion[],
+): string {
+  const cuerpo = filas.map((items) => {
+    const ids = new Set(items.map((item) => String(idDe(item))))
+    const notas = variables.flatMap((variable) => {
+      const grafico = claveGraficoEvolucion(grupo, variable.id)
+      return anotaciones
+        .filter((a) => a.grafico === grafico && a.punto != null && ids.has(a.punto))
+        .map((a) => notaParaCsv(a, variable.nombreCorto))
+    })
+    return [
+      fechaHoraCompleta(items[0].fecha_hora),
+      ...variables.map((variable) => items.map(variable.valor).find((v) => v != null) ?? null),
+      notas.join(' | '),
+    ]
+  })
+  return aCsv([['Fecha', ...variables.map((v) => v.etiquetaEje), 'Notas'], ...cuerpo])
+}
+
+/** En el CSV, las columnas van en el mismo orden que la tabla de la ficha (PIM al final). */
+const VARIABLES_EVALUACION_CSV = ['fvc', 'fev1', 'pef', 'fivc', 'fiv1', 'pim'].map(
+  (id) => VARIABLES_EVALUACION.find((v) => v.id === id)!,
+)
+
+export function csvDeEvaluaciones(evaluacionesCronologicas: Evaluacion[], anotaciones: Anotacion[]): string {
+  const sesiones = agruparEnSesiones(evaluacionesCronologicas).map((s) =>
+    [s.espirometria, s.pim].filter((e): e is Evaluacion => e != null),
+  )
+  return csvDeEvolucion('evaluaciones', sesiones, VARIABLES_EVALUACION_CSV, (e) => e.id_evaluacion, anotaciones)
+}
+
+export function csvDeEntrenamientos(entrenamientosCronologicos: Entrenamiento[], anotaciones: Anotacion[]): string {
+  return csvDeEvolucion(
     'entrenamientos',
-    entrenamientosCronologicos,
-    (e) => e.id_entrenamiento,
+    entrenamientosCronologicos.map((e) => [e]),
     VARIABLES_ENTRENAMIENTO,
-    nombrePaciente,
+    (e) => e.id_entrenamiento,
+    anotaciones,
   )
 }

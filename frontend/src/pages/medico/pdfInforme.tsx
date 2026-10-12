@@ -107,7 +107,7 @@ export async function generarInformeGeneral({
     )
 
     pdf.subseccion('Evolución', ALTO_FILA_GRAFICOS)
-    pdf.graficos(await graficosDeEvolucion(seriesDeEvaluaciones(evaluacionesCronologicas, nombre), anotaciones))
+    pdf.graficos(await graficosDeEvolucion(seriesDeEvaluaciones(evaluacionesCronologicas), anotaciones))
 
     pdf.subseccion('Comentarios de las sesiones')
     const sesionesComentadas = sesiones
@@ -135,7 +135,7 @@ export async function generarInformeGeneral({
     )
 
     pdf.subseccion('Evolución', ALTO_FILA_GRAFICOS)
-    pdf.graficos(await graficosDeEvolucion(seriesDeEntrenamientos(entrenamientosCronologicos, nombre), anotaciones))
+    pdf.graficos(await graficosDeEvolucion(seriesDeEntrenamientos(entrenamientosCronologicos), anotaciones))
   }
 
   pdf.pie(`Generado con Bronquito el ${hoyLegible()} por ${medico}`)

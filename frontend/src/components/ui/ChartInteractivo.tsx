@@ -3,8 +3,7 @@ import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, 
 import { createPortal } from 'react-dom'
 import type { Anotacion } from '../../api/types'
 import type { DescripcionPunto } from '../../anotaciones/notas'
-import { marcadoresDe, textoNotasCsv } from '../../anotaciones/notas'
-import { TIPO_CSV, aCsv, elegirDestino } from '../../exportar/archivos'
+import { marcadoresDe } from '../../anotaciones/notas'
 import { NotaComposer, NotaItem } from './Notas'
 
 /** Lo que necesita un gráfico para mostrar notas en sus puntos y dejar agregar nuevas. */
@@ -18,13 +17,6 @@ export interface AnotacionesGrafico {
   onBorrar: (idAnotacion: number) => Promise<void>
   /** Pasá un objeto nuevo para abrir la burbuja de ese punto (ej. desde un panel de notas). */
   enfocar?: { punto: string } | null
-}
-
-/** Exportar los puntos del gráfico a CSV: una fila por punto, más una columna con sus notas. */
-export interface CsvGrafico {
-  nombreArchivo: string
-  encabezados: string[]
-  fila: (indice: number) => (string | number | null)[]
 }
 
 interface ChartInteractivoProps {
@@ -44,8 +36,6 @@ interface ChartInteractivoProps {
   color: string
   /** Si está, se pueden marcar puntos con notas. */
   anotaciones?: AnotacionesGrafico
-  /** Si está, aparece el botón para exportar a CSV. */
-  csv?: CsvGrafico
   /** Ejes, líneas, etc.: contenido SVG en coordenadas del viewBox. */
   children: ReactNode
 }
@@ -59,7 +49,6 @@ const ANCHO_BURBUJA = 300
  * Marco común de los gráficos: pasando el mouse muestra el valor del punto
  * más cercano; con `anotaciones`, un click en un punto abre una burbuja para
  * dejarle una nota, y los puntos con notas quedan marcados con un número.
- * Con `csv`, agrega el botón para exportar los puntos.
  *
  * Para que un gráfico nuevo tenga todo esto, alcanza con dibujarlo adentro
  * de este componente y pasarle la posición de sus puntos.
@@ -75,7 +64,6 @@ export function ChartInteractivo({
   describirPunto,
   color,
   anotaciones,
-  csv,
   children,
 }: ChartInteractivoProps) {
   const svgRef = useRef<SVGSVGElement>(null)
@@ -83,8 +71,6 @@ export function ChartInteractivo({
   const [hover, setHover] = useState<number | null>(null)
   const [abierto, setAbierto] = useState<string | null>(null)
   const [, setReubicaciones] = useState(0)
-  const [exportando, setExportando] = useState(false)
-  const [errorCsv, setErrorCsv] = useState<string | null>(null)
 
   const clavesPuntos = useMemo(() => claves ?? posiciones.map((_, i) => String(i)), [claves, posiciones])
   const indicePorClave = useMemo(() => new Map(clavesPuntos.map((clave, i) => [clave, i])), [clavesPuntos])
@@ -205,26 +191,6 @@ export function ChartInteractivo({
     setAbierto(indice == null ? null : clavesPuntos[indice])
   }
 
-  async function exportarCsv() {
-    if (!csv) return
-    setErrorCsv(null)
-    const destino = await elegirDestino(`${csv.nombreArchivo}.csv`, TIPO_CSV)
-    if (!destino) return
-    setExportando(true)
-    try {
-      const notasPorPunto = new Map(marcadores.map((m) => [m.punto, m.notas]))
-      const filas = [
-        [...csv.encabezados, 'Notas'],
-        ...posiciones.map((_, i) => [...csv.fila(i), textoNotasCsv(notasPorPunto.get(clavesPuntos[i]))]),
-      ]
-      await destino.guardar(new Blob([aCsv(filas)], { type: 'text/csv;charset=utf-8' }))
-    } catch {
-      setErrorCsv('No se pudo guardar el CSV.')
-    } finally {
-      setExportando(false)
-    }
-  }
-
   const indiceAbierto = abierto != null ? indicePorClave.get(abierto) ?? null : null
   const marcadorAbierto = marcadores.find((m) => m.punto === abierto)
   const posicionBurbuja = anotaciones && indiceAbierto != null ? enPantalla(indiceAbierto) : null
@@ -233,21 +199,7 @@ export function ChartInteractivo({
 
   return (
     <div className="chart-wrap">
-      <div className={`chart-header ${csv ? 'con-acciones' : ''}`}>
-        <div className="chart-header-titulo">{encabezado}</div>
-        {csv && (
-          <button
-            type="button"
-            className="chart-csv-btn"
-            onClick={exportarCsv}
-            disabled={exportando}
-            title="Exportar los puntos de este gráfico a CSV"
-          >
-            CSV
-          </button>
-        )}
-      </div>
-      {errorCsv && <p className="nota-error">{errorCsv}</p>}
+      {encabezado}
 
       <svg
         ref={svgRef}

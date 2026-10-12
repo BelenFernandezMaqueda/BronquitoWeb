@@ -11,8 +11,14 @@ import { Modal } from '../../components/ui/Modal'
 import { TrashIcon } from '../../components/ui/TrashIcon'
 import { FrequencyModal } from './FrequencyModal'
 import { formatearFecha, isoArgentina } from '../../data/mockData'
-import { TIPO_PDF, elegirDestino } from '../../exportar/archivos'
-import { agruparEnSesiones, seriesDeEntrenamientos, seriesDeEvaluaciones } from './evolucion'
+import { TIPO_CSV, TIPO_PDF, elegirDestino } from '../../exportar/archivos'
+import {
+  agruparEnSesiones,
+  csvDeEntrenamientos,
+  csvDeEvaluaciones,
+  seriesDeEntrenamientos,
+  seriesDeEvaluaciones,
+} from './evolucion'
 
 type Tab = 'evaluaciones' | 'entrenamiento' | 'calendario'
 
@@ -169,16 +175,39 @@ export function PatientDetail({ paciente, onDesvincular }: PatientDetailProps) {
   }, [evaluaciones])
 
   const evaluacionesCronologicas = [...evaluaciones].reverse()
-  const seriesEvaluaciones = seriesDeEvaluaciones(evaluacionesCronologicas, paciente.nombre)
-  const seriesEntrenamiento = seriesDeEntrenamientos([...entrenamientos].reverse(), paciente.nombre)
+  const entrenamientosCronologicos = [...entrenamientos].reverse()
+  const seriesEvaluaciones = seriesDeEvaluaciones(evaluacionesCronologicas)
+  const seriesEntrenamiento = seriesDeEntrenamientos(entrenamientosCronologicos)
 
   const notasPaciente = useAnotaciones(Number(paciente.id))
   const [generandoInforme, setGenerandoInforme] = useState(false)
-  const [errorInforme, setErrorInforme] = useState<string | null>(null)
+  const [errorExportacion, setErrorExportacion] = useState<string | null>(null)
+
+  // Cambiar de pestaña o de paciente descarta el error de la exportación anterior.
+  useEffect(() => {
+    setErrorExportacion(null)
+  }, [tab, paciente.id])
+
+  /** Un solo CSV con los puntos de todos los gráficos de evolución de la pestaña abierta. */
+  async function descargarCsv() {
+    setErrorExportacion(null)
+    const grupo = tab === 'evaluaciones' ? 'Evaluaciones' : 'Entrenamientos'
+    const destino = await elegirDestino(`${grupo} ${paciente.nombre} ${hoyIso}.csv`, TIPO_CSV)
+    if (!destino) return
+    try {
+      const contenido =
+        tab === 'evaluaciones'
+          ? csvDeEvaluaciones(evaluacionesCronologicas, notasPaciente.anotaciones)
+          : csvDeEntrenamientos(entrenamientosCronologicos, notasPaciente.anotaciones)
+      await destino.guardar(new Blob([contenido], { type: 'text/csv;charset=utf-8' }))
+    } catch {
+      setErrorExportacion('No se pudo guardar el CSV.')
+    }
+  }
 
   async function descargarInforme() {
     if (!token) return
-    setErrorInforme(null)
+    setErrorExportacion(null)
     // Primero el diálogo de "Guardar como": el navegador sólo lo deja abrir justo después del click.
     const destino = await elegirDestino(`Informe ${paciente.nombre} ${hoyIso}.pdf`, TIPO_PDF)
     if (!destino) return
@@ -196,7 +225,7 @@ export function PatientDetail({ paciente, onDesvincular }: PatientDetailProps) {
       })
       await destino.guardar(pdf)
     } catch (err) {
-      setErrorInforme(err instanceof Error ? err.message : 'No se pudo generar el informe.')
+      setErrorExportacion(err instanceof Error ? err.message : 'No se pudo generar el informe.')
     } finally {
       setGenerandoInforme(false)
     }
@@ -212,26 +241,15 @@ export function PatientDetail({ paciente, onDesvincular }: PatientDetailProps) {
     <div className="card">
       <div className="detail-title-row">
         <h2>{paciente.nombre}</h2>
-        <div className="detail-title-acciones">
-          <button
-            className="btn btn-outline btn-sm"
-            onClick={descargarInforme}
-            disabled={generandoInforme || cargandoEvaluaciones || cargandoEntrenamientos || notasPaciente.cargando}
-            title="PDF con los datos del paciente, sus evaluaciones y entrenamientos a lo largo del tiempo, y las notas"
-          >
-            {generandoInforme ? 'Generando informe…' : 'Descargar informe'}
-          </button>
-          <button
-            className="btn-icon btn-icon-pink"
-            onClick={() => setConfirmarDesvinculo(true)}
-            aria-label="Desvincular paciente"
-            title="Desvincular paciente"
-          >
-            <TrashIcon className="icon-16" />
-          </button>
-        </div>
+        <button
+          className="btn-icon btn-icon-pink"
+          onClick={() => setConfirmarDesvinculo(true)}
+          aria-label="Desvincular paciente"
+          title="Desvincular paciente"
+        >
+          <TrashIcon className="icon-16" />
+        </button>
       </div>
-      {errorInforme && <div className="auth-alert error">{errorInforme}</div>}
 
       <div className="detail-header">
         <div className="detail-id">
@@ -268,12 +286,37 @@ export function PatientDetail({ paciente, onDesvincular }: PatientDetailProps) {
             Calendario
           </button>
         </div>
-        {tab === 'calendario' && (
+        {tab === 'calendario' ? (
           <button className="btn btn-outline btn-sm" onClick={() => setModalFrecuencia(true)}>
             Modificar frecuencia
           </button>
+        ) : (
+          <div className="tabs-row-acciones">
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={descargarCsv}
+              disabled={
+                notasPaciente.cargando ||
+                (tab === 'evaluaciones'
+                  ? cargandoEvaluaciones || evaluaciones.length === 0
+                  : cargandoEntrenamientos || entrenamientos.length === 0)
+              }
+              title="Un CSV con los puntos de todos los gráficos de esta pestaña y sus notas"
+            >
+              Descargar CSV
+            </button>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={descargarInforme}
+              disabled={generandoInforme || cargandoEvaluaciones || cargandoEntrenamientos || notasPaciente.cargando}
+              title="PDF con los datos del paciente, sus evaluaciones y entrenamientos a lo largo del tiempo, y las notas"
+            >
+              {generandoInforme ? 'Generando informe…' : 'Descargar informe'}
+            </button>
+          </div>
         )}
       </div>
+      {errorExportacion && <div className="auth-alert error">{errorExportacion}</div>}
 
       {tab === 'evaluaciones' && (
         <div role="tabpanel">

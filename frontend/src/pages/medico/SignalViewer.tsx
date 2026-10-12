@@ -5,9 +5,9 @@ import { useSession } from '../../auth/session'
 import { describirPuntoXY, marcadoresDe } from '../../anotaciones/notas'
 import { claveGraficoSenal, comentariosDeSesion, useAnotaciones } from '../../anotaciones/useAnotaciones'
 import { SignalXYChart } from '../../components/ui/SignalXYChart'
-import { TIPO_PDF, elegirDestino } from '../../exportar/archivos'
+import { TIPO_CSV, TIPO_PDF, elegirDestino } from '../../exportar/archivos'
 import { formatearFecha } from '../../data/mockData'
-import { GRAFICOS_POR_TIPO, fechaParaArchivo } from './graficosSenales'
+import { GRAFICOS_POR_TIPO, csvDeSenales, fechaParaArchivo } from './graficosSenales'
 import type { PuntoAnotado } from './NotasSesionPanel'
 import { NotasSesionPanel } from './NotasSesionPanel'
 
@@ -47,7 +47,7 @@ export function SignalViewer({
   const notasPaciente = useAnotaciones(idPaciente)
   const [enfoque, setEnfoque] = useState<{ grafico: string; punto: string } | null>(null)
   const [generandoPdf, setGenerandoPdf] = useState(false)
-  const [errorPdf, setErrorPdf] = useState<string | null>(null)
+  const [errorExportacion, setErrorExportacion] = useState<string | null>(null)
 
   const sesion = evaluacion.fecha_hora
   const graficos = GRAFICOS_POR_TIPO[evaluacion.tipo]
@@ -76,7 +76,7 @@ export function SignalViewer({
 
   useEffect(() => {
     setEnfoque(null)
-    setErrorPdf(null)
+    setErrorExportacion(null)
   }, [evaluacion.id_evaluacion])
 
   // Calcula cuánto espacio vertical queda libre debajo de la grilla para que los
@@ -93,7 +93,13 @@ export function SignalViewer({
     recalcular()
     window.addEventListener('resize', recalcular)
     return () => window.removeEventListener('resize', recalcular)
-  }, [muestras, errorPdf])
+  }, [muestras, errorExportacion])
+
+  /** Las notas de uno de los gráficos de esta evaluación. */
+  const notasDeGrafico = (idGrafico: string) => {
+    const clave = claveGraficoSenal(evaluacion.id_evaluacion, idGrafico)
+    return notasPaciente.anotaciones.filter((a) => a.grafico === clave)
+  }
 
   // Los puntos anotados de los gráficos que se están viendo, para listarlos en el panel.
   const puntosAnotados: PuntoAnotado[] = muestras
@@ -101,10 +107,9 @@ export function SignalViewer({
         const clave = claveGraficoSenal(evaluacion.id_evaluacion, def.id)
         const x = muestras[def.x]
         const y = muestras[def.y]
-        const notas = notasPaciente.anotaciones.filter((a) => a.grafico === clave)
         return marcadoresDe(
           x.map((_, i) => String(i)),
-          notas,
+          notasDeGrafico(def.id),
         ).map((m) => {
           const { principal, secundario } = describirPuntoXY(def.etiquetaX, def.etiquetaY, x[m.indice], y[m.indice])
           return {
@@ -120,9 +125,24 @@ export function SignalViewer({
       })
     : []
 
+  /** Un solo CSV con los puntos de todos los gráficos que se están viendo. */
+  async function descargarCsv() {
+    if (!muestras) return
+    setErrorExportacion(null)
+    const tipo = evaluacion.tipo === 'ESPIROMETRIA' ? 'espirometria' : 'pim'
+    const destino = await elegirDestino(`${fechaParaArchivo(sesion)}_${tipo}.csv`, TIPO_CSV)
+    if (!destino) return
+    try {
+      const contenido = csvDeSenales(graficos, muestras, (def) => notasDeGrafico(def.id))
+      await destino.guardar(new Blob([contenido], { type: 'text/csv;charset=utf-8' }))
+    } catch {
+      setErrorExportacion('No se pudo guardar el CSV.')
+    }
+  }
+
   async function descargarPdf() {
     if (!token) return
-    setErrorPdf(null)
+    setErrorExportacion(null)
     // Primero el diálogo de "Guardar como": el navegador sólo lo deja abrir justo después del click.
     const destino = await elegirDestino(`${fechaParaArchivo(sesion)}.pdf`, TIPO_PDF)
     if (!destino) return
@@ -152,7 +172,7 @@ export function SignalViewer({
       })
       await destino.guardar(pdf)
     } catch (err) {
-      setErrorPdf(err instanceof Error ? err.message : 'No se pudo generar el PDF.')
+      setErrorExportacion(err instanceof Error ? err.message : 'No se pudo generar el PDF.')
     } finally {
       setGenerandoPdf(false)
     }
@@ -181,18 +201,28 @@ export function SignalViewer({
           · {formatearFecha(evaluacion.fecha_hora)}
         </h3>
 
-        <button
-          className="btn btn-teal btn-sm signal-header-pdf"
-          onClick={descargarPdf}
-          disabled={generandoPdf || notasPaciente.cargando}
-          title="PDF con los datos del paciente, las señales de la sesión y todas sus notas"
-        >
-          {generandoPdf ? 'Generando PDF…' : 'Descargar PDF de la sesión'}
-        </button>
+        <div className="signal-header-acciones">
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={descargarCsv}
+            disabled={!muestras || notasPaciente.cargando}
+            title="Un CSV con los puntos de todos los gráficos de esta evaluación y sus notas"
+          >
+            Descargar CSV
+          </button>
+          <button
+            className="btn btn-teal btn-sm"
+            onClick={descargarPdf}
+            disabled={generandoPdf || notasPaciente.cargando}
+            title="PDF con los datos del paciente, las señales de la sesión y todas sus notas"
+          >
+            {generandoPdf ? 'Generando PDF…' : 'Descargar PDF de la sesión'}
+          </button>
+        </div>
       </div>
 
       {avisoTipo && <p className="empty-state mt-16">{avisoTipo}</p>}
-      {errorPdf && <div className="auth-alert error">{errorPdf}</div>}
+      {errorExportacion && <div className="auth-alert error">{errorExportacion}</div>}
 
       {cargando ? (
         <p className="empty-state">Cargando curva…</p>
@@ -220,7 +250,6 @@ export function SignalViewer({
                     sesion,
                     enfocar: enfoque?.grafico === clave ? enfoque : null,
                   })}
-                  nombreCsv={`${fechaParaArchivo(sesion)}_${evaluacion.tipo === 'ESPIROMETRIA' ? 'espirometria' : 'pim'}_${def.id}`}
                 />
               )
             })}

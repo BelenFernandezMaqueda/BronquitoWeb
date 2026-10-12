@@ -7,7 +7,7 @@ interface PimTrendChartProps {
   valores: number[]
   /** Una fecha corta por valor, mismo orden y largo que `valores`. */
   fechas: string[]
-  /** Fecha completa de cada valor (para el CSV y el detalle del punto). Si falta, se usa `fechas`. */
+  /** Fecha completa de cada valor (para el detalle del punto). Si falta, se usa `fechas`. */
   fechasCompletas?: string[]
   /** Clave estable de cada punto (ej. el id de la evaluación), para anotarlo. */
   claves?: string[]
@@ -19,8 +19,6 @@ interface PimTrendChartProps {
   etiquetaEje?: string
   color?: string
   anotaciones?: AnotacionesGrafico
-  /** Nombre (sin extensión) del CSV con los valores. Sin esto no aparece el botón de exportar. */
-  nombreCsv?: string
 }
 
 /** Evolución de una métrica a lo largo de las evaluaciones, con ejes X/Y. */
@@ -34,7 +32,6 @@ export function PimTrendChart({
   etiquetaEje = 'PIM (cmH₂O)',
   color = '#F0459A',
   anotaciones,
-  nombreCsv,
 }: PimTrendChartProps) {
   const w = 340
   const h = 220
@@ -89,11 +86,6 @@ export function PimTrendChart({
       describirPunto={(i) => describirPuntoEvolucion(etiquetaEje, valores[i], fechaCompleta(i))}
       color={color}
       anotaciones={anotaciones}
-      csv={
-        nombreCsv
-          ? { nombreArchivo: nombreCsv, encabezados: ['Fecha', etiquetaEje], fila: (i) => [fechaCompleta(i), valores[i]] }
-          : undefined
-      }
     >
       <text x={padLeft} y={12} fontSize="9.5" fill="#5C7C82" fontFamily="Nunito, sans-serif">
         {etiquetaEje}

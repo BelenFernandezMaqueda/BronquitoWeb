@@ -13,8 +13,6 @@ interface SignalXYChartProps {
   color?: string
   /** Si está, se pueden marcar muestras con notas (la clave de cada punto es su índice). */
   anotaciones?: AnotacionesGrafico
-  /** Nombre (sin extensión) del CSV con las muestras. Sin esto no aparece el botón de exportar. */
-  nombreCsv?: string
 }
 
 /** Gráfico XY genérico para una señal cruda (flujo/volumen/presión vs. tiempo, o flujo-volumen). */
@@ -26,7 +24,6 @@ export function SignalXYChart({
   caption,
   color = '#2FA7A0',
   anotaciones,
-  nombreCsv,
 }: SignalXYChartProps) {
   const w = 360
   const h = 240
@@ -71,7 +68,6 @@ export function SignalXYChart({
       describirPunto={(i) => describirPuntoXY(etiquetaX, etiquetaY, x[i], y[i])}
       color={color}
       anotaciones={anotaciones}
-      csv={nombreCsv ? { nombreArchivo: nombreCsv, encabezados: [etiquetaX, etiquetaY], fila: (i) => [x[i], y[i]] } : undefined}
     >
       <text x={padLeft} y={12} fontSize="9.5" fill="#5C7C82" fontFamily="Nunito, sans-serif">
         {etiquetaY}

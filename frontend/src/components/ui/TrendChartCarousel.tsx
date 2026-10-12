@@ -15,10 +15,8 @@ export interface SerieTendencia {
   clave?: string
   /** Clave estable de cada punto (ej. el id de la evaluación), mismo orden que `valores`. */
   clavesPuntos?: string[]
-  /** Fecha y hora completas de cada punto, para el CSV y el detalle del punto. */
+  /** Fecha y hora completas de cada punto, para el detalle del punto. */
   fechasCompletas?: string[]
-  /** Nombre (sin extensión) del CSV exportable. */
-  nombreCsv?: string
 }
 
 interface TrendChartCarouselProps {
@@ -59,7 +57,6 @@ export function TrendChartCarousel({ series, anotacionesDe }: TrendChartCarousel
                 fechasCompletas={serie.fechasCompletas}
                 claves={serie.clavesPuntos}
                 anotaciones={anotacionesDe?.(serie)}
-                nombreCsv={serie.nombreCsv}
                 etiquetaEje={serie.etiquetaEje}
                 titulo={serie.titulo}
                 unidad={serie.unidad}
