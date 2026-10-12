@@ -125,7 +125,7 @@ export function SignalViewer({
       })
     : []
 
-  /** Un solo CSV con los puntos de todos los gráficos que se están viendo. */
+  /** Un CSV con la señal de esta evaluación y las notas de sus gráficos. */
   async function descargarCsv() {
     if (!muestras) return
     setErrorExportacion(null)
@@ -206,7 +206,7 @@ export function SignalViewer({
             className="btn btn-outline btn-sm"
             onClick={descargarCsv}
             disabled={!muestras || notasPaciente.cargando}
-            title="Un CSV con los puntos de todos los gráficos de esta evaluación y sus notas"
+            title="Un CSV con la señal de esta evaluación (tiempo, flujo, volumen y presión) y sus notas"
           >
             Descargar CSV
           </button>

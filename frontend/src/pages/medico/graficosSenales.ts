@@ -41,13 +41,20 @@ export function fechaParaArchivo(fechaHora: string): string {
   return fechaHora.slice(0, 10)
 }
 
+/** Las columnas del CSV de una evaluación: las mismas, en el mismo orden, para espirometría y PIM. */
+const COLUMNAS_CSV: { variable: keyof EvaluacionMuestras; etiqueta: string }[] = [
+  { variable: 'tiempo', etiqueta: 'Tiempo (s)' },
+  { variable: 'flujo', etiqueta: 'Flujo (L/s)' },
+  { variable: 'volumen', etiqueta: 'Volumen (L)' },
+  { variable: 'presion', etiqueta: 'Presión (cmH₂O)' },
+]
+
 /**
- * Los puntos de todos los gráficos de una evaluación en un solo CSV: dos
- * columnas (X e Y) por gráfico, en el mismo orden que en pantalla y con el
- * título del gráfico arriba de cada par, para poder llevar cada uno a Excel
- * o Sheets y volver a graficarlo. Como todos salen de las mismas muestras,
- * cada fila es una muestra y, en "Notas" (al final, para no cortar los
- * pares), van las notas de esa muestra aclarando de qué gráfico es cada una.
+ * La señal completa de una evaluación en un solo CSV, para poder volver a
+ * graficarla en Excel o Sheets: una fila por muestra con tiempo, flujo,
+ * volumen y presión (aunque alguna quede en 0 en este tipo de evaluación)
+ * y, en "Notas", las notas de esa muestra aclarando de qué gráfico es cada
+ * una.
  */
 export function csvDeSenales(
   graficos: GraficoSenal[],
@@ -62,14 +69,10 @@ export function csvDeSenales(
     }
   }
 
-  const cantidad = Math.max(0, ...graficos.flatMap((g) => [muestras[g.x].length, muestras[g.y].length]))
+  const cantidad = Math.max(0, ...COLUMNAS_CSV.map((c) => muestras[c.variable].length))
   const filas = Array.from({ length: cantidad }, (_, i) => [
-    ...graficos.flatMap((g) => [muestras[g.x][i], muestras[g.y][i]]),
+    ...COLUMNAS_CSV.map((c) => muestras[c.variable][i]),
     (notasPorMuestra.get(i) ?? []).join(' | '),
   ])
-  return aCsv([
-    [...graficos.flatMap((g) => [g.titulo, '']), ''],
-    [...graficos.flatMap((g) => [g.etiquetaX, g.etiquetaY]), 'Notas'],
-    ...filas,
-  ])
+  return aCsv([[...COLUMNAS_CSV.map((c) => c.etiqueta), 'Notas'], ...filas])
 }
