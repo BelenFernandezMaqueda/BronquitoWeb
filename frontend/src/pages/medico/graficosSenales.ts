@@ -42,23 +42,18 @@ export function fechaParaArchivo(fechaHora: string): string {
 }
 
 /**
- * Los puntos de todos los gráficos de una evaluación en un solo CSV. Como
- * todos salen de las mismas muestras, va una fila por muestra con cada
- * variable que usan los gráficos (tiempo, flujo, volumen…) y, en "Notas",
- * las notas de esa muestra aclarando de qué gráfico es cada una.
+ * Los puntos de todos los gráficos de una evaluación en un solo CSV: dos
+ * columnas (X e Y) por gráfico, en el mismo orden que en pantalla y con el
+ * título del gráfico arriba de cada par, para poder llevar cada uno a Excel
+ * o Sheets y volver a graficarlo. Como todos salen de las mismas muestras,
+ * cada fila es una muestra y, en "Notas" (al final, para no cortar los
+ * pares), van las notas de esa muestra aclarando de qué gráfico es cada una.
  */
 export function csvDeSenales(
   graficos: GraficoSenal[],
   muestras: EvaluacionMuestras,
   notasDe: (grafico: GraficoSenal) => Anotacion[],
 ): string {
-  const columnas = new Map<keyof EvaluacionMuestras, string>()
-  for (const g of graficos) {
-    if (!columnas.has(g.x)) columnas.set(g.x, g.etiquetaX)
-    if (!columnas.has(g.y)) columnas.set(g.y, g.etiquetaY)
-  }
-  const variables = [...columnas.keys()]
-
   const notasPorMuestra = new Map<number, string[]>()
   for (const g of graficos) {
     for (const nota of notasDe(g)) {
@@ -67,10 +62,14 @@ export function csvDeSenales(
     }
   }
 
-  const cantidad = Math.max(0, ...variables.map((v) => muestras[v].length))
+  const cantidad = Math.max(0, ...graficos.flatMap((g) => [muestras[g.x].length, muestras[g.y].length]))
   const filas = Array.from({ length: cantidad }, (_, i) => [
-    ...variables.map((v) => muestras[v][i]),
+    ...graficos.flatMap((g) => [muestras[g.x][i], muestras[g.y][i]]),
     (notasPorMuestra.get(i) ?? []).join(' | '),
   ])
-  return aCsv([[...columnas.values(), 'Notas'], ...filas])
+  return aCsv([
+    [...graficos.flatMap((g) => [g.titulo, '']), ''],
+    [...graficos.flatMap((g) => [g.etiquetaX, g.etiquetaY]), 'Notas'],
+    ...filas,
+  ])
 }
