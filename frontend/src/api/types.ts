@@ -109,6 +109,25 @@ export interface Frecuencia {
   creado_en: string
 }
 
+/**
+ * Nota de un médico sobre un paciente: en un punto de un gráfico (`grafico` +
+ * `punto`), o comentario general de una sesión (`grafico` y `punto` en null).
+ * Las claves de `grafico`/`punto` las arma el front (ver anotaciones/useAnotaciones.ts).
+ */
+export interface Anotacion {
+  id_anotacion: number
+  id_medico: number
+  /** Nombre y apellido del médico que la escribió. */
+  autor: string
+  /** `fecha_hora` de la sesión de consultorio a la que pertenece, si es de una. */
+  sesion: string | null
+  grafico: string | null
+  punto: string | null
+  texto: string
+  creado_en: string
+  editado_en: string | null
+}
+
 // --- Request bodies -------------------------------------------------------
 
 export interface MedicoLoginBody {
@@ -170,4 +189,11 @@ export interface FrecuenciaCrearBody {
   sesiones_por_semana: number
   /** Días de la semana recomendados (0 = lunes ... 6 = domingo). */
   dias_semana: number[]
+}
+
+export interface AnotacionCrearBody {
+  texto: string
+  sesion?: string | null
+  grafico?: string | null
+  punto?: string | null
 }

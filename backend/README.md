@@ -41,7 +41,10 @@ app/
                         Paciente: registro web, login (nombre de usuario + PIN),
                         olvidé PIN / resetearlo.
     medicos.py             Perfil del médico logueado, sus pacientes vinculados,
-                        vincular un paciente existente por nombre de usuario + PIN.
+                        vincular un paciente existente por nombre de usuario + PIN,
+                        y las notas sobre gráficos y sesiones
+                        (`/medicos/me/pacientes/{id}/anotaciones`: listar, crear,
+                        editar y borrar — sólo el autor edita/borra).
     pacientes.py            Perfil y edición de datos del paciente logueado
                         mediante `PATCH /pacientes/me`.
 ```
@@ -59,6 +62,12 @@ app/
 | `entrenamientos_graficar` | `EntrenamientoGraficar` | `models/entrenamiento.py` |
 | `rutina` | `Rutina` | `models/rutina.py` |
 | `notas_medicas` | `NotaMedica` | `models/nota_medica.py` |
+
+Además de esas 9, hay dos tablas que son sólo de la web (el dispositivo no las sincroniza):
+`frecuencia_recomendada` (`FrecuenciaRecomendada`) y `anotaciones` (`Anotacion`, en
+`models/anotacion.py`) — las notas que los médicos dejan en un punto de un gráfico o como
+comentario general de una sesión. No confundir con `notas_medicas`, que son mensajes para el
+paciente. `create_all()` crea las tablas nuevas solas al arrancar: no hace falta borrar la base.
 
 La tabla de pacientes se llama `usuarios` en MySQL (así la nombraron en el documento de
 arquitectura) pero la clase de Python se llama `Paciente`, más claro para el resto del

@@ -74,6 +74,17 @@ export function EvaluationSignalPage() {
     }
   }, [evaluaciones, evaluacion])
 
+  // Espirometría primero y PIM después, el mismo orden en que salen en el PDF de la sesión.
+  const evaluacionesDeLaSesion = useMemo(
+    () =>
+      evaluacion
+        ? evaluaciones
+            .filter((e) => mismaSesion(e.fecha_hora, evaluacion.fecha_hora))
+            .sort((a, b) => (a.tipo === b.tipo ? 0 : a.tipo === 'ESPIROMETRIA' ? -1 : 1))
+        : [],
+    [evaluaciones, evaluacion],
+  )
+
   function irA(destino: Evaluacion) {
     navigate(`/medico/pacientes/${idPaciente}/evaluaciones/${destino.id_evaluacion}`)
   }
@@ -96,6 +107,7 @@ export function EvaluationSignalPage() {
     <SignalViewer
       idPaciente={Number(idPaciente)}
       evaluacion={evaluacion}
+      evaluacionesDeLaSesion={evaluacionesDeLaSesion}
       onVolver={() => navigate('/')}
       onCambiarTipo={cambiarTipo}
       avisoTipo={avisoTipo}
