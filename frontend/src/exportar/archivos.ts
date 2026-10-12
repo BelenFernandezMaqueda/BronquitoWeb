@@ -72,16 +72,21 @@ function descargar(contenido: Blob, nombre: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
+// Sin separador de miles ni notación científica (ej. 1e-7), que Excel y Sheets no leen como número.
+const FORMATO_NUMERO = new Intl.NumberFormat('en-US', { useGrouping: false, maximumFractionDigits: 10 })
+
 /**
- * Arma un CSV estándar (coma como separador, punto decimal), que abre bien
- * en Python, MATLAB y Google Sheets. Lleva BOM para que Excel respete las
- * tildes.
+ * Arma un CSV en el formato de Excel y Google Sheets en español (punto y
+ * coma como separador, coma decimal), así se abre directo con cada valor en
+ * su columna y los números como números (con punto decimal, Sheets en
+ * español toma algunos como texto y otros como fecha). Lleva BOM para que
+ * Excel respete las tildes. En Python: pd.read_csv(..., sep=';', decimal=',').
  */
 export function aCsv(filas: (string | number | null | undefined)[][]): string {
   const celda = (valor: string | number | null | undefined) => {
     if (valor == null) return ''
-    const texto = String(valor)
-    return /[",\r\n]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto
+    if (typeof valor === 'number') return FORMATO_NUMERO.format(valor).replace('.', ',')
+    return /[";\r\n]/.test(valor) ? `"${valor.replace(/"/g, '""')}"` : valor
   }
-  return '﻿' + filas.map((fila) => fila.map(celda).join(',')).join('\r\n') + '\r\n'
+  return '﻿' + filas.map((fila) => fila.map(celda).join(';')).join('\r\n') + '\r\n'
 }
