@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { PatientListPanel } from './PatientListPanel'
 import { PatientDetail } from './PatientDetail'
 import { ConnectPatientModal } from './ConnectPatientModal'
+import { DispositivoPanel } from './DispositivoPanel'
 import { useSession } from '../../auth/session'
 import { ApiError, api } from '../../api/client'
 import type { PacientePerfil } from '../../api/types'
@@ -75,12 +76,15 @@ export function DoctorView() {
 
   return (
     <div id="contenido-principal" className="doctor-layout">
-      <PatientListPanel
-        pacientes={pacientes}
-        pacienteSeleccionadoId={seleccionadoId}
-        onSeleccionar={setSeleccionadoId}
-        onConectar={() => setMostrarConectar(true)}
-      />
+      <div>
+        <PatientListPanel
+          pacientes={pacientes}
+          pacienteSeleccionadoId={seleccionadoId}
+          onSeleccionar={setSeleccionadoId}
+          onConectar={() => setMostrarConectar(true)}
+        />
+        <DispositivoPanel pacientes={pacientes} />
+      </div>
 
       {cargando ? (
         <div className="card">

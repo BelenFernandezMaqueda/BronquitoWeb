@@ -61,7 +61,7 @@ function mensajeDeError(data: unknown, status: number): string {
   return `Error ${status}. Probá de nuevo en un momento.`
 }
 
-async function apiFetch<T>(path: string, opciones: Opciones = {}): Promise<T> {
+export async function apiFetch<T>(path: string, opciones: Opciones = {}): Promise<T> {
   const { method = 'GET', body, token } = opciones
 
   let respuesta: Response

@@ -20,7 +20,7 @@ class Paciente(Base):
     __tablename__ = "usuarios"
 
     id_paciente: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    # Sólo letras minúsculas (a-z y ñ), de 4 a 25 — ver
+    # Sólo letras minúsculas (a-z, sin ñ), de 4 a 25 — ver
     # `normalizar_nombre_usuario` en app/schemas/auth.py. La collation binaria
     # hace que MySQL compare exacto: con la de por defecto (`_ai_ci`) "nino" y
     # "niño" serían el mismo usuario.

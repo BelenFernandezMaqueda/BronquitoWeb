@@ -11,3 +11,6 @@ backend/__pycache__
 *.pyc
 
 .DS_Store
+
+# IP de la compu en la red local (la escribe levantar.sh)
+.red_local/

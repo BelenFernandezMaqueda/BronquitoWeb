@@ -6,6 +6,7 @@ import { VideoLightbox } from '../../components/ui/VideoLightbox'
 import { VideoCarousel } from '../../components/ui/VideoCarousel'
 import type { VideoTutorial } from '../../components/ui/VideoCarousel'
 import { MedicalTeamPanel } from './MedicalTeamPanel'
+import { DispositivoPacientePanel } from './DispositivoPacientePanel'
 import { formatearFecha, isoArgentina } from '../../data/mockData'
 import { useSession } from '../../auth/session'
 import { ApiError, api } from '../../api/client'
@@ -202,7 +203,10 @@ export function PatientDashboard() {
 
   return (
     <div className="patient-layout">
-      <MedicalTeamPanel />
+      <div>
+        <MedicalTeamPanel />
+        <DispositivoPacientePanel />
+      </div>
       <div id="contenido-principal">
       {subVista === 'resumen' && (
         <>

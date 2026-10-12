@@ -2083,3 +2083,128 @@ button.cal-ribbon {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Modal del dispositivo (pages/medico/DispositivoPanel.tsx) ---------- */
+.modal.modal-wide:has(> .dispositivo-modal) {
+  max-width: 640px;
+}
+
+.dispositivo-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 8px 0 12px;
+}
+
+.dispositivo-modal .auth-alert {
+  margin: 0;
+}
+
+.dispositivo-codigo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 18px 20px;
+  border-radius: var(--radius-sm);
+  background: var(--teal-pale);
+  text-align: center;
+}
+
+.dispositivo-codigo-label {
+  font-size: 12.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--teal-deep);
+}
+
+.dispositivo-codigo-numero {
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+  color: var(--teal-deep);
+}
+
+.dispositivo-codigo-ayuda {
+  font-size: 13px;
+  color: var(--ink-soft);
+  max-width: 440px;
+}
+
+.dispositivo-datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.dispositivo-dato {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  min-width: 0;
+}
+
+.dispositivo-dato span {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.dispositivo-dato strong {
+  font-size: 15px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.dispositivo-dato small {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.dispositivo-pedido {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dispositivo-pedido .btn {
+  flex-shrink: 0;
+}
+
+.dispositivo-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dispositivo-confirmar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.dispositivo-confirmar h4 {
+  margin: 0;
+}
+
+.dispositivo-confirmar .field {
+  margin: 0;
+}
+
+@media (max-width: 560px) {
+  .dispositivo-datos {
+    grid-template-columns: 1fr;
+  }
+  .dispositivo-pedido {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

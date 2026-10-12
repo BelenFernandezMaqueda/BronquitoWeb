@@ -44,6 +44,15 @@ services:
       EMAIL_FROM: ${EMAIL_FROM:-Bronquito <no-reply@bronquito.local>}
       EMAIL_ENABLED: ${EMAIL_ENABLED:-true}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      # Clave con la que se identifica la ESP (header X-Device-Key). Sin
+      # ella, los endpoints /dispositivo/... responden 503.
+      DEVICE_API_KEY: ${DEVICE_API_KEY:-}
+      # IP de la compu en la red local (el "código" que se tipea en la ESP).
+      # Desde adentro de Docker no se puede averiguar: levantar.sh la escribe
+      # en .red_local/ip y la mantiene al día si la compu cambia de red.
+      SERVER_LAN_IP_ARCHIVO: /run/red_local/ip
+    volumes:
+      - ./.red_local:/run/red_local:ro
     ports:
       - "8000:8000"
     depends_on:
