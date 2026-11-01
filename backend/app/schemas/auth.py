@@ -21,19 +21,20 @@ def validar_nombre_sin_numeros(valor: str) -> str:
     return valor
 
 
-_PATRON_NOMBRE_USUARIO = re.compile(r"[a-zñ]{4,25}")
+# Sin ñ: el nombre de usuario se muestra en la pantalla de la ESP, que no
+# la dibuja.
+_PATRON_NOMBRE_USUARIO = re.compile(r"[a-z]{4,25}")
 
 
 def normalizar_nombre_usuario(valor: str) -> str:
     """
     Nombre de usuario del paciente: sin distinguir mayúsculas (se guarda
-    siempre en minúscula), sólo letras a-z y ñ, de 4 a 25. El NFC junta una
-    "ñ" que llegue como "n" + tilde combinable en un solo carácter.
+    siempre en minúscula), sólo letras a-z (sin ñ), de 4 a 25.
     """
     usuario = unicodedata.normalize("NFC", valor.strip()).lower()
     if not _PATRON_NOMBRE_USUARIO.fullmatch(usuario):
         raise ValueError(
-            "El nombre de usuario debe tener entre 4 y 25 letras, sin números, "
+            "El nombre de usuario debe tener entre 4 y 25 letras, sin ñ, números, "
             "tildes, espacios ni caracteres especiales."
         )
     return usuario

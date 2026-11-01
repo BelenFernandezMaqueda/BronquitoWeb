@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import Base, SessionLocal, engine, migrar_esquema_existente
-from app.routers import auth, medicos, pacientes
+from app.routers import auth, dispositivo, dispositivo_medico, dispositivo_paciente, medicos, pacientes
 from app.seed import seed_if_empty
 
 # Importa todos los modelos (ver app/models/__init__.py) para que
@@ -27,6 +27,9 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(pacientes.router)
 app.include_router(medicos.router)
+app.include_router(dispositivo.router)
+app.include_router(dispositivo_medico.router)
+app.include_router(dispositivo_paciente.router)
 
 
 @app.on_event("startup")
