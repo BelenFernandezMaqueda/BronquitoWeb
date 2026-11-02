@@ -1,5 +1,8 @@
 import type { ConexionDispositivo } from '../../api/dispositivo'
 
+/** Cada cuánto los modales releen el estado (levantar.sh revisa la IP cada 5 s). */
+export const INTERVALO_REFRESCO_CODIGO_MS = 5_000
+
 /**
  * Recuadro con el código (último número de la IP de la compu) que se tipea
  * en la ESP para que encuentre al servidor. Lo usan la vista del médico y la

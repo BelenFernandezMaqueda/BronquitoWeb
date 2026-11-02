@@ -32,6 +32,19 @@ class VerificarPinRequest(BaseModel):
     pin: str = Field(pattern=r"^\d{4}$")
 
 
+class SubirEvaluacionRequest(BaseModel):
+    """
+    Una prueba de /EVALUACIONES de la SD: el `.json` tal cual está guardado
+    y el texto completo del `.csv` (null si la prueba no tiene curva).
+    """
+
+    usuario: str = Field(max_length=25)
+    # Nombre del archivo en la SD, sin la extensión.
+    archivo: str = Field(min_length=1, max_length=80)
+    resumen: dict
+    csv: str | None = Field(default=None, max_length=500_000)
+
+
 # --- Lo que manda la web del médico -------------------------------------------
 
 

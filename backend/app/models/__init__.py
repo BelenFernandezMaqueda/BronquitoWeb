@@ -6,7 +6,7 @@ crear las tablas, y para que las relaciones declaradas como strings
 """
 
 from app.models.anotacion import Anotacion
-from app.models.dispositivo import Dispositivo, RegistroSync, SolicitudDispositivo
+from app.models.dispositivo import ArchivoDispositivo, Dispositivo, RegistroSync, SolicitudDispositivo
 from app.models.entrenamiento import Entrenamiento, EntrenamientoGraficar
 from app.models.evaluacion import Evaluacion, EvaluacionMuestra
 from app.models.frecuencia_recomendada import FrecuenciaRecomendada
@@ -34,4 +34,5 @@ __all__ = [
     "Dispositivo",  # tabla dispositivo
     "SolicitudDispositivo",  # tabla solicitudes_dispositivo
     "RegistroSync",  # tabla registro_sync
+    "ArchivoDispositivo",  # tabla archivos_dispositivo (pruebas subidas desde la SD)
 ]

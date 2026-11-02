@@ -5,7 +5,7 @@ import { ApiError } from '../../api/client'
 import { apiDispositivo } from '../../api/dispositivo'
 import { textoUltimaConexion } from '../../api/dispositivo'
 import type { EstadoDispositivo, SolicitudDispositivo } from '../../api/dispositivo'
-import { CodigoConexion } from '../../components/ui/CodigoConexion'
+import { CodigoConexion, INTERVALO_REFRESCO_CODIGO_MS } from '../../components/ui/CodigoConexion'
 import type { Paciente } from '../../types'
 
 interface DispositivoPanelProps {
@@ -98,6 +98,21 @@ function DispositivoModal({ pacientes, onClose }: DispositivoPanelProps & { onCl
   useEffect(() => {
     void actualizar()
   }, [actualizar])
+
+  // El código cambia si la compu cambia de red: se relee solo mientras el
+  // modal está abierto. Se frena mientras se manda un pedido, para que una
+  // lectura vieja no pise el estado que devuelve ese pedido.
+  useEffect(() => {
+    if (enviando) return
+    let cancelado = false
+    const intervalo = window.setInterval(() => {
+      apiDispositivo.estado(token!).then((e) => !cancelado && setEstado(e), () => {})
+    }, INTERVALO_REFRESCO_CODIGO_MS)
+    return () => {
+      cancelado = true
+      window.clearInterval(intervalo)
+    }
+  }, [token, enviando])
 
   async function ejecutar(pedido: () => Promise<EstadoDispositivo>) {
     setEnviando(true)
