@@ -11,10 +11,13 @@ Contrato con el firmware:
 
 Orden de una sincronización:
   1. POST /dispositivo/identificar  -> hora + cuántas solicitudes hay.
-  2. GET  /dispositivo/solicitudes  -> la cola, en orden.
-  3. Por cada una, el paciente toca ACEPTAR / RECHAZAR y la ESP llama a
+  2. POST /dispositivo/evaluaciones -> una vez por cada prueba de la SD que
+     todavía no subió. Va antes de las solicitudes: un RESET se niega
+     mientras haya pruebas sin subir.
+  3. GET  /dispositivo/solicitudes  -> la cola, en orden.
+  4. Por cada una, el paciente toca ACEPTAR / RECHAZAR y la ESP llama a
      POST /dispositivo/solicitudes/{id}/confirmar.
-  4. Vuelve a 2 hasta que la lista venga vacía (confirmar un RESET con
+  5. Vuelve a 3 hasta que la lista venga vacía (confirmar un RESET con
      "cambiar usuario" genera el CARGAR_PERFIL siguiente).
 """
 
@@ -39,6 +42,7 @@ from app.core.dispositivo import (
     registrar,
     sin_acentos,
 )
+from app.core.evaluaciones_dispositivo import guardar_prueba
 from app.core.security import verificar_secreto
 from app.core.timezone import ARGENTINA
 from app.models.dispositivo import (
@@ -49,7 +53,12 @@ from app.models.dispositivo import (
     TipoSolicitud,
 )
 from app.models.paciente import Paciente
-from app.schemas.dispositivo import ConfirmarRequest, IdentificarRequest, VerificarPinRequest
+from app.schemas.dispositivo import (
+    ConfirmarRequest,
+    IdentificarRequest,
+    SubirEvaluacionRequest,
+    VerificarPinRequest,
+)
 
 
 class RutaDispositivo(APIRoute):
@@ -290,3 +299,41 @@ def verificar_pin(payload: VerificarPinRequest, db: Session = Depends(get_db)):
     registrar(db, dispositivo, "PIN_OK", pin_version(paciente))
     db.commit()
     return {"ok": True, "pin_version": pin_version(paciente)}
+
+
+# --- Pruebas de la SD -----------------------------------------------------------
+
+
+@router.post("/evaluaciones")
+def subir_evaluacion(payload: SubirEvaluacionRequest, db: Session = Depends(get_db)):
+    """
+    La ESP sube una prueba de /EVALUACIONES de su SD (el `.json` y el texto
+    del `.csv`). Con 200 la marca `"sincronizado": true` y no la vuelve a mandar.
+
+    Reglas:
+      - Sólo pruebas del paciente asignado al dispositivo (igual que verificar-pin).
+      - Se puede repetir sin problema: si la prueba ya había llegado, contesta
+        200 con `"estado": "repetida"` y no la duplica.
+      - Las que no se muestran en la web (espirometría inválida, PIM en cero)
+        igual se guardan y contestan 200, así la ESP deja de tenerlas pendientes.
+    La conversión al formato de la web está en app/core/evaluaciones_dispositivo.py.
+    """
+    dispositivo = obtener_dispositivo(db)
+    dispositivo.ultimo_contacto = ahora_utc()
+
+    paciente = _paciente_asignado(dispositivo, db)
+    if paciente is None:
+        db.commit()
+        raise ErrorDispositivo(404, "sin_paciente_asignado")
+    if payload.usuario != sin_acentos(paciente.nombre_usuario):
+        db.commit()
+        raise ErrorDispositivo(404, "usuario_no_asignado")
+
+    resultado = guardar_prueba(db, paciente, payload.archivo, payload.resumen, payload.csv)
+    registrar(
+        db, dispositivo, "PRUEBA_RECIBIDA",
+        f"{payload.archivo} -> {resultado['estado']} visible={resultado['visible']} "
+        f"evaluacion={resultado['id_evaluacion']}",
+    )
+    db.commit()
+    return {"ok": True, **resultado}

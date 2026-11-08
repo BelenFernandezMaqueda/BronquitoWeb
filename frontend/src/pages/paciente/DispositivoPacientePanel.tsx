@@ -4,7 +4,7 @@ import { useSession } from '../../auth/session'
 import { ApiError } from '../../api/client'
 import { apiDispositivo, textoUltimaConexion } from '../../api/dispositivo'
 import type { DispositivoPaciente } from '../../api/dispositivo'
-import { CodigoConexion } from '../../components/ui/CodigoConexion'
+import { CodigoConexion, INTERVALO_REFRESCO_CODIGO_MS } from '../../components/ui/CodigoConexion'
 
 /**
  * Botón "Sincronizar dispositivo" de la vista del paciente y su modal: el
@@ -48,6 +48,19 @@ function DispositivoPacienteModal({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     void actualizar()
   }, [actualizar])
+
+  // El código cambia si la compu cambia de red: se relee solo mientras el
+  // modal está abierto, sin tocar "Actualizar estado".
+  useEffect(() => {
+    let cancelado = false
+    const intervalo = window.setInterval(() => {
+      apiDispositivo.delPaciente(token!).then((e) => !cancelado && setEstado(e), () => {})
+    }, INTERVALO_REFRESCO_CODIGO_MS)
+    return () => {
+      cancelado = true
+      window.clearInterval(intervalo)
+    }
+  }, [token])
 
   return (
     <Modal

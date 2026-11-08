@@ -10,8 +10,9 @@ Código del servidor:
 | `backend/app/routers/dispositivo.py` | Endpoints que llama la ESP (`/dispositivo/...`) |
 | `backend/app/routers/dispositivo_medico.py` | Lo que usa la web del médico (`/medicos/me/dispositivo/...`) |
 | `backend/app/routers/dispositivo_paciente.py` | Lo que ve el paciente (`/pacientes/me/dispositivo`) |
-| `backend/app/models/dispositivo.py` | Tablas `dispositivo`, `solicitudes_dispositivo`, `registro_sync` |
+| `backend/app/models/dispositivo.py` | Tablas `dispositivo`, `solicitudes_dispositivo`, `archivos_dispositivo`, `registro_sync` |
 | `backend/app/core/dispositivo.py` | Clave del dispositivo, armado del perfil, IP de la red local |
+| `backend/app/core/evaluaciones_dispositivo.py` | Paso de las pruebas de la SD al formato de la web |
 
 ---
 
@@ -21,7 +22,9 @@ Código del servidor:
   quiere pedirle queda guardado en una **cola de solicitudes** y la ESP la retira
   cuando sincroniza.
 - **Sincroniza en momentos puntuales:** al arrancar, al tocar "Sincronizar", al terminar
-  un ejercicio. No hay latido periódico.
+  una evaluación (si el paciente acepta "Enviar a la web"). No hay latido periódico.
+- **Cada sincronización sube las pruebas de la SD** que todavía no subió
+  (`"sincronizado": false`) y después las marca `"sincronizado": true`.
 - **Cada solicitud se acepta o rechaza en la pantalla** (ACEPTAR / RECHAZAR) y la ESP
   avisa al servidor qué pasó.
 - **El PIN nunca viaja del servidor a la ESP.** La ESP se lo pide al paciente y el
@@ -122,8 +125,8 @@ Siempre llega un objeto JSON. Primero mirar el **código HTTP**, después el cue
 | 401 | `clave_invalida` | todos | Revisar la clave del dispositivo |
 | 401 | `pin_incorrecto` | `verificar-pin` | Mostrar "PIN incorrecto" y volver a pedirlo (sin límite) |
 | 404 | `solicitud_inexistente` | `confirmar` | Descartar esa solicitud y seguir |
-| 404 | `sin_paciente_asignado` | `verificar-pin` | El médico le sacó el paciente: volver a sincronizar |
-| 404 | `usuario_no_asignado` | `verificar-pin` | El usuario no es el asignado: volver a sincronizar |
+| 404 | `sin_paciente_asignado` | `verificar-pin`, `evaluaciones` | El médico le sacó el paciente: volver a sincronizar |
+| 404 | `usuario_no_asignado` | `verificar-pin`, `evaluaciones` | El usuario no es el asignado: volver a sincronizar |
 | 503 | `dispositivo_no_configurado` | todos | Avisar: falta configurar el servidor |
 
 ### Ejemplo en C++ (HTTPClient + ArduinoJson v7)
@@ -196,6 +199,10 @@ ESP                                              Servidor
  |                                                |
  |  (si pin_version cambió) POST verificar-pin -> |
  |                                                |
+ |  POST /dispositivo/evaluaciones (x cada  --->  |  guarda la prueba
+ |       prueba con "sincronizado": false)        |
+ |  (la marca "sincronizado": true)               |
+ |                                                |
  |  GET /dispositivo/solicitudes  ------------->  |  PENDIENTE -> ENTREGADA
  |  <------------------------  [solicitudes...]   |
  |                                                |
@@ -209,11 +216,16 @@ ESP                                              Servidor
 2. Si el `usuario` devuelto es el mismo que tiene la SD pero el `pin_version` es
    distinto, cambiaron el PIN desde la web: pedir el PIN nuevo y validarlo con
    `POST /dispositivo/verificar-pin`.
-3. `GET /dispositivo/solicitudes` → la cola, en orden.
-4. Por cada solicitud, en orden: mostrar ACEPTAR / RECHAZAR, aplicarla si se acepta y
+3. Subir cada prueba de `/EVALUACIONES/` con `"sincronizado": false` con
+   `POST /dispositivo/evaluaciones` (ver 5.5) y, con 200, marcarla `"sincronizado": true`.
+   Va **antes** de las solicitudes: un RESET se niega mientras haya pruebas sin subir.
+4. `GET /dispositivo/solicitudes` → la cola, en orden.
+5. Por cada solicitud, en orden: mostrar ACEPTAR / RECHAZAR, aplicarla si se acepta y
    avisar con `POST /dispositivo/solicitudes/{id}/confirmar`.
-5. Volver al paso 3 hasta que la lista venga vacía. (Confirmar un RESET de "cambiar
+6. Volver al paso 4 hasta que la lista venga vacía. (Confirmar un RESET de "cambiar
    usuario" genera en ese momento el CARGAR_PERFIL siguiente.)
+7. Si subió pruebas, volver a `identificar` para que la web vea los `archivos_pendientes`
+   que quedaron.
 
 **Cortes de luz:** si se apaga con una solicitud en pantalla sin responder, el servidor
 la vuelve a mandar en la próxima sincronización. **Confirmar dos veces** la misma
@@ -448,6 +460,52 @@ La ESP manda el PIN que tipeó el paciente y el servidor dice si coincide.
 
 Sólo se puede verificar el PIN del paciente asignado al dispositivo.
 
+### 5.5 `POST /dispositivo/evaluaciones`
+
+Sube una prueba de `/EVALUACIONES/` de la SD: el `.json` tal cual está guardado y el texto
+del `.csv`. Un pedido por prueba.
+
+**Body**
+
+| Campo | Tipo | Obligatorio | Descripción |
+|---|---|---|---|
+| `usuario` | string | sí | El `usuario` del perfil cargado |
+| `archivo` | string | sí | Nombre del archivo en la SD, sin la extensión (máx. 80) |
+| `resumen` | objeto | sí | El contenido del `.json`, sin tocar |
+| `csv` | string o null | no | El contenido del `.csv` (`tiempo_ms,presion_cmh2o,flujo_lmin`); null si la prueba no tiene curva |
+
+```json
+{
+  "usuario": "msalerno",
+  "archivo": "eval_20261030_162009_ESP",
+  "resumen": {"id_evaluacion": "eval_20261030_162009_ESP", "calibracion_id": "eval_20261030_162009",
+              "tipo": "ESPIROMETRIA", "sincronizado": false, "valida": true, "fvc": 4.01, "...": "..."},
+  "csv": "tiempo_ms,presion_cmh2o,flujo_lmin\n0,0.00,0.00\n10,0.00,1.52\n..."
+}
+```
+
+**Respuestas**
+
+| HTTP | Cuerpo | Qué hacer |
+|---|---|---|
+| 200 | `{"ok": true, "estado": "nueva", "visible": true, "id_evaluacion": 29}` | Marcar `"sincronizado": true` |
+| 200 | `{"ok": true, "estado": "repetida", ...}` | Ya había llegado (no se duplica): marcarla igual |
+| 404 | `{"ok": false, "error": "usuario_no_asignado"}` / `sin_paciente_asignado` | No seguir subiendo: sincronizar de nuevo |
+| 400 | `{"ok": false, "error": "datos_invalidos"}` | A esa prueba le pasa algo: dejarla pendiente y seguir con las demás |
+
+Qué hace la web con cada prueba:
+
+- **Unidades:** tiempo de ms a s, flujo de L/min a L/s, presión igual. El volumen se integra
+  del flujo igual que en el historial del equipo (dentro de `evento_inicio_ms`–`evento_fin_ms`
+  si están).
+- **Fecha:** la del `calibracion_id` (`eval_AAAAMMDD_HHMMSS`), así la PIM y la
+  espirometría de una calibración quedan en la misma sesión. Las `eval_SINHORA_n` van al
+  01/11/2026 (`FECHA_SIN_HORA`) con una hora al azar, la misma para toda la calibración.
+- **No se muestran** (se guardan igual en `archivos_dispositivo`): espirometrías con
+  `"valida": false` y la PIM en cero que guarda el equipo sin sensor de PIM.
+- **Repetidas:** se reconocen por la huella del contenido (sin `"sincronizado"`), así que
+  da igual si se corta la luz antes de marcarla.
+
 ---
 
 ## 6. Estados de una solicitud
@@ -508,6 +566,8 @@ crear otro.
      `verificar-pin` hasta que dé 200 → guardar PIN y `pin_version` → confirmar
      `{"ok": true}`.
 5. Repetir el paso 2 hasta que la lista venga vacía.
+
+(Entre `identificar` y `solicitudes` el firmware también sube las pruebas pendientes, ver 4.)
 
 **Orden importante:** primero aplicar (guardar perfil, validar PIN), después confirmar.
 Si se corta la luz antes de confirmar, la solicitud vuelve a llegar y se repite sin
@@ -593,4 +653,4 @@ Reglas del lado médico:
 
 - Solicitud `RUTINA`: rutina + frecuencia recomendada en `CONFIGURACION.JSON`, y el
   punto amarillo de "frecuencia sin sincronizar" en la web.
-- Subida de evaluaciones y entrenamientos desde la ESP.
+- Subida de entrenamientos desde la ESP (las evaluaciones ya se suben, ver 5.5).

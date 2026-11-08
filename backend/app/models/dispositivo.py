@@ -117,6 +117,42 @@ class SolicitudDispositivo(Base):
     paciente_destino = relationship("Paciente", foreign_keys=[id_paciente_destino])
 
 
+class ArchivoDispositivo(Base):
+    """
+    TABLA ARCHIVOS_DISPOSITIVO — cada prueba que la ESP subió desde su SD
+    (`POST /dispositivo/evaluaciones`, ver app/core/evaluaciones_dispositivo.py).
+
+    Guarda el `.json` tal cual vino, así no se pierde nada de lo que la web
+    todavía no muestra (pico, intentos, BEV, factor BTPS...) ni las pruebas
+    que no aparecen en la web (espirometrías inválidas, PIM en cero).
+
+    También sirve para no duplicar: si la ESP vuelve a mandar un archivo que
+    ya llegó (ej. se cortó la luz antes de marcarlo como sincronizado), se
+    reconoce por la huella del contenido.
+    """
+
+    __tablename__ = "archivos_dispositivo"
+
+    id_archivo: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id_paciente: Mapped[int] = mapped_column(ForeignKey("usuarios.id_paciente"), index=True)
+    # Nombre del archivo en la SD, sin la extensión (ej. "eval_20261030_162009_ESP").
+    nombre: Mapped[str] = mapped_column(String(80))
+    # Las pruebas de una misma calibración (PIM + espirometría + intentos) comparten este id.
+    calibracion_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    # SHA-256 del contenido (.json sin "sincronizado" + .csv).
+    huella: Mapped[str] = mapped_column(String(64), index=True)
+    resumen: Mapped[dict] = mapped_column(JSON)
+    # `fecha_hora` que se le asignó a la sesión (para las pruebas sin hora, la inventada).
+    fecha_hora: Mapped[datetime] = mapped_column(DateTime)
+
+    # La evaluación que se creó en la web. NULL si no se muestra; `motivo_oculta` dice por qué.
+    id_evaluacion: Mapped[int | None] = mapped_column(ForeignKey("evaluaciones.id_evaluacion"), nullable=True)
+    motivo_oculta: Mapped[str | None] = mapped_column(String(40), nullable=True)
+
+    # En UTC, sin zona, como el resto de las fechas de la base.
+    recibido_en: Mapped[datetime] = mapped_column(DateTime)
+
+
 class RegistroSync(Base):
     """
     TABLA REGISTRO_SYNC — bitácora de todo lo que pasa entre la web y la ESP
